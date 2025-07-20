@@ -1,4 +1,11 @@
-import type { Student, Category, Rating } from './types';
+import type { Student, Category, Rating, User } from './types';
+
+// --- In-memory data store for prototype ---
+// In a real app, this would be a database.
+
+let users: User[] = [
+  { id: 'user1', name: 'Guru Contoh', email: 'guru@sekolah.id', password: 'password', createdAt: Date.now() }
+];
 
 let students: Student[] = [];
 
@@ -6,32 +13,107 @@ let categories: Category[] = [];
 
 let ratings: Rating[] = [];
 
+// --- Helper Functions ---
+
 const simulateDelay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// Student Management
+const loadFromLocalStorage = <T>(key: string, defaultValue: T): T => {
+  if (typeof window === 'undefined') return defaultValue;
+  try {
+    const item = window.localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error(`Error reading from localStorage key “${key}”:`, error);
+    return defaultValue;
+  }
+};
+
+const saveToLocalStorage = <T>(key: string, value: T) => {
+   if (typeof window === 'undefined') return;
+  try {
+    const item = JSON.stringify(value);
+    window.localStorage.setItem(key, item);
+  } catch (error) {
+    console.error(`Error writing to localStorage key “${key}”:`, error);
+  }
+};
+
+// --- Data Initialization ---
+// This ensures data persists across reloads in the browser.
+if (typeof window !== 'undefined') {
+  users = loadFromLocalStorage('app_users', users);
+  students = loadFromLocalStorage('app_students', students);
+  categories = loadFromLocalStorage('app_categories', categories);
+  ratings = loadFromLocalStorage('app_ratings', ratings);
+}
+
+
+// --- User Management ---
+export const getUsers = async (): Promise<User[]> => {
+  await simulateDelay(50);
+  return [...users].sort((a,b) => a.name.localeCompare(b.name));
+};
+
+export const addUser = async (userData: Omit<User, 'id' | 'createdAt'>): Promise<User> => {
+  await simulateDelay(200);
+  const newUser: User = {
+    ...userData,
+    id: `user${Date.now()}`,
+    createdAt: Date.now(),
+  };
+  users.push(newUser);
+  saveToLocalStorage('app_users', users);
+  return newUser;
+};
+
+export const deleteUser = async (id: string): Promise<void> => {
+  await simulateDelay(200);
+  users = users.filter(u => u.id !== id);
+  saveToLocalStorage('app_users', users);
+};
+
+
+// --- Student Management ---
 export const getStudents = async (): Promise<Student[]> => {
   await simulateDelay(100);
   return [...students].sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const addStudent = async (name: string): Promise<Student> => {
+export const addStudent = async (data: { name: string; photoUrl?: string }): Promise<Student> => {
   await simulateDelay(200);
   const newStudent: Student = {
     id: String(Date.now()),
-    name,
+    name: data.name,
+    photoUrl: data.photoUrl,
     createdAt: Date.now(),
   };
   students.push(newStudent);
+  saveToLocalStorage('app_students', students);
   return newStudent;
 };
+
+export const updateStudent = async (id: string, data: { name: string; photoUrl?: string }): Promise<Student> => {
+    await simulateDelay(200);
+    let studentToUpdate = students.find(s => s.id === id);
+    if (!studentToUpdate) {
+        throw new Error("Student not found");
+    }
+    studentToUpdate.name = data.name;
+    studentToUpdate.photoUrl = data.photoUrl;
+    saveToLocalStorage('app_students', students);
+    return studentToUpdate;
+}
+
 
 export const deleteStudent = async (id: string): Promise<void> => {
   await simulateDelay(200);
   students = students.filter(s => s.id !== id);
   ratings = ratings.filter(r => r.studentId !== id);
+  saveToLocalStorage('app_students', students);
+  saveToLocalStorage('app_ratings', ratings);
 };
 
-// Category Management
+// --- Category Management ---
 export const getCategories = async (): Promise<Category[]> => {
   await simulateDelay(100);
   return [...categories].sort((a,b) => a.name.localeCompare(b.name));
@@ -45,6 +127,7 @@ export const addCategory = async (name: string): Promise<Category> => {
     createdAt: Date.now(),
   };
   categories.push(newCategory);
+  saveToLocalStorage('app_categories', categories);
   return newCategory;
 };
 
@@ -60,9 +143,11 @@ export const deleteCategory = async (id: string): Promise<void> => {
       rating.average = newCount > 0 ? newTotal / newCount : 0;
     }
   });
+  saveToLocalStorage('app_categories', categories);
+  saveToLocalStorage('app_ratings', ratings);
 };
 
-// Rating Management
+// --- Rating Management ---
 export const getRatings = async (): Promise<Rating[]> => {
     await simulateDelay(100);
     return [...ratings];
@@ -81,5 +166,6 @@ export const saveRating = async (ratingData: Omit<Rating, 'id' | 'createdAt'>): 
     } else {
         ratings.push(newRating);
     }
+    saveToLocalStorage('app_ratings', ratings);
     return newRating;
 };

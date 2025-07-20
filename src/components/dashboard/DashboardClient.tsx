@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getStudents, getCategories, getRatings } from '@/lib/data';
-import type { Student, Category, Rating } from '@/lib/types';
+import { getStudents, getCategories, getRatings, getUsers } from '@/lib/data';
+import type { Student, Category, Rating, User } from '@/lib/types';
 import { Header } from '@/components/common/Header';
 import { RatingInput } from '@/components/dashboard/RatingInput';
 import { Recap } from '@/components/dashboard/Recap';
 import { StudentManager } from '@/components/dashboard/StudentManager';
 import { CategoryManager } from '@/components/dashboard/CategoryManager';
+import { UserManager } from '@/components/dashboard/UserManager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,6 +17,7 @@ export default function DashboardClient() {
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
@@ -24,30 +26,37 @@ export default function DashboardClient() {
 
   useEffect(() => {
     // Simple auth check for prototype
-    const userLoggedIn = localStorage.getItem('user_authenticated');
-    if (userLoggedIn !== 'true') {
-      router.replace('/');
-      toast({
-        title: "Akses Ditolak",
-        description: "Silakan login untuk mengakses dasbor.",
-        variant: "destructive"
-      });
-    } else {
-      setIsAuthenticated(true);
+    try {
+      const userLoggedIn = localStorage.getItem('user_authenticated');
+      if (userLoggedIn) {
+        setIsAuthenticated(true);
+      } else {
+        router.replace('/');
+        toast({
+          title: "Akses Ditolak",
+          description: "Silakan login untuk mengakses dasbor.",
+          variant: "destructive"
+        });
+      }
+    } catch(e) {
+       setIsAuthenticated(false);
+       router.replace('/');
     }
   }, [router, toast]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [studentsData, categoriesData, ratingsData] = await Promise.all([
+      const [studentsData, categoriesData, ratingsData, usersData] = await Promise.all([
         getStudents(),
         getCategories(),
-        getRatings()
+        getRatings(),
+        getUsers()
       ]);
       setStudents(studentsData);
       setCategories(categoriesData);
       setRatings(ratingsData);
+      setUsers(usersData);
     } catch (error) {
       console.error("Failed to fetch data", error);
       toast({ title: "Error", description: "Gagal memuat data dari server.", variant: "destructive"});
@@ -64,6 +73,7 @@ export default function DashboardClient() {
   
   const [isStudentManagerOpen, setStudentManagerOpen] = useState(false);
   const [isCategoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [isUserManagerOpen, setUserManagerOpen] = useState(false);
 
   const handleDataUpdate = async () => {
     await fetchData();
@@ -84,6 +94,7 @@ export default function DashboardClient() {
          <Header
             onManageStudents={() => setStudentManagerOpen(true)}
             onManageCategories={() => setCategoryManagerOpen(true)}
+            onManageUsers={() => setUserManagerOpen(true)}
           />
         <div className="p-8">
           <Skeleton className="h-16 w-full mb-8" />
@@ -103,6 +114,7 @@ export default function DashboardClient() {
       <Header
         onManageStudents={() => setStudentManagerOpen(true)}
         onManageCategories={() => setCategoryManagerOpen(true)}
+        onManageUsers={() => setUserManagerOpen(true)}
       />
 
       <main className="flex-1 p-4 md:p-8 container mx-auto">
@@ -134,6 +146,12 @@ export default function DashboardClient() {
         isOpen={isCategoryManagerOpen}
         onOpenChange={setCategoryManagerOpen}
         categories={categories}
+        onUpdate={handleDataUpdate}
+      />
+      <UserManager
+        isOpen={isUserManagerOpen}
+        onOpenChange={setUserManagerOpen}
+        users={users}
         onUpdate={handleDataUpdate}
       />
     </div>

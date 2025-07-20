@@ -2,14 +2,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { Download } from 'lucide-react';
-import { subDays, startOfWeek, startOfMonth, format } from 'date-fns';
+import { startOfWeek, startOfMonth, format } from 'date-fns';
 import type { Student, Category, Rating, RecapData } from '@/lib/types';
 import { exportToCsv } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type RecapProps = {
   students: Student[];
@@ -25,7 +25,7 @@ const getStudentInitials = (name: string) => {
     return name.substring(0, 2).toUpperCase();
 };
 
-const RankingList = ({ title, students, highlightClass }: { title: string; students: RecapData[], highlightClass: string }) => (
+const RankingList = ({ title, students, highlightClass }: { title: string; students: (RecapData & { photoUrl?: string })[], highlightClass: string }) => (
     <div>
         <h3 className="font-semibold mb-2">{title}</h3>
         <ul className="space-y-2">
@@ -33,7 +33,8 @@ const RankingList = ({ title, students, highlightClass }: { title: string; stude
                 <li key={s.studentId} className="flex items-center justify-between bg-card p-2 rounded-md border">
                     <div className="flex items-center gap-3">
                         <span className={`font-bold text-lg ${highlightClass}`}>{index + 1}</span>
-                        <Avatar>
+                         <Avatar>
+                            <AvatarImage src={s.photoUrl} alt={s.studentName} />
                             <AvatarFallback className={`${highlightClass} text-white`}>{getStudentInitials(s.studentName)}</AvatarFallback>
                         </Avatar>
                         <span className="font-medium">{s.studentName}</span>
@@ -113,6 +114,7 @@ export function Recap({ students, categories, ratings }: RecapProps) {
       return {
         studentId: student.id,
         studentName: student.name,
+        photoUrl: student.photoUrl,
         overallAverage,
         categoryAverages,
         totalRatings,
@@ -170,7 +172,13 @@ export function Recap({ students, categories, ratings }: RecapProps) {
                             <TableBody>
                                 {recapData.map(data => (
                                 <TableRow key={data.studentId}>
-                                    <TableCell className="font-medium">{data.studentName}</TableCell>
+                                    <TableCell className="font-medium flex items-center gap-3">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={data.photoUrl} alt={data.studentName} />
+                                            <AvatarFallback>{getStudentInitials(data.studentName)}</AvatarFallback>
+                                        </Avatar>
+                                        {data.studentName}
+                                    </TableCell>
                                     <TableCell className="font-bold text-center text-primary">{data.overallAverage.toFixed(2)}</TableCell>
                                     <TableCell className="text-center">{data.totalRatings}</TableCell>
                                     {categories.map(cat => (

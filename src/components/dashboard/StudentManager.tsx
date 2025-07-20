@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit, User as UserIcon } from 'lucide-react';
 
 import type { Student } from '@/lib/types';
-import { addStudent, deleteStudent } from '@/lib/data';
+import { addStudent, deleteStudent, updateStudent } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 import {
@@ -16,14 +16,18 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const studentSchema = z.object({
   name: z.string().min(3, "Nama siswa minimal 3 karakter."),
+  photoUrl: z.string().optional(),
 });
 
 type StudentManagerProps = {
@@ -35,22 +39,51 @@ type StudentManagerProps = {
 
 export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: StudentManagerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", photoUrl: "" },
   });
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        form.setValue('photoUrl', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEdit = (student: Student) => {
+    setEditingStudent(student);
+    form.reset({ name: student.name, photoUrl: student.photoUrl });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingStudent(null);
+    form.reset({ name: "", photoUrl: "" });
+  };
 
   async function onSubmit(values: z.infer<typeof studentSchema>) {
     setIsSubmitting(true);
     try {
-      await addStudent(values.name);
-      toast({ title: "Sukses", description: "Siswa baru telah ditambahkan." });
-      form.reset();
+      if (editingStudent) {
+        await updateStudent(editingStudent.id, values);
+        toast({ title: "Sukses", description: "Data siswa telah diperbarui." });
+      } else {
+        await addStudent(values);
+        toast({ title: "Sukses", description: "Siswa baru telah ditambahkan." });
+      }
+      form.reset({ name: "", photoUrl: "" });
+      setEditingStudent(null);
       onUpdate();
     } catch (error) {
-      toast({ title: "Error", description: "Gagal menambahkan siswa.", variant: 'destructive' });
+      toast({ title: "Error", description: "Gagal menyimpan data siswa.", variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -67,22 +100,45 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
       }
     }
   }
+  
+  const photoUrl = form.watch('photoUrl');
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={isOpen} onOpenChange={(open) => { onOpenChange(open); handleCancelEdit(); }}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Kelola Siswa</DialogTitle>
-          <DialogDescription>Tambah, lihat, atau hapus data siswa dari sistem.</DialogDescription>
+          <DialogTitle>{editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}</DialogTitle>
+          <DialogDescription>
+            {editingStudent ? 'Perbarui detail siswa.' : 'Tambahkan siswa baru ke dalam sistem.'}
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex items-end gap-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+             <div className="flex flex-col items-center gap-4">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={photoUrl} />
+                  <AvatarFallback>
+                    <UserIcon className="h-12 w-12" />
+                  </AvatarFallback>
+                </Avatar>
+                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  Ganti Foto
+                </Button>
+                <Input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+              </div>
+
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
-                <FormItem className="flex-grow">
+                <FormItem>
                   <FormLabel>Nama Siswa</FormLabel>
                   <FormControl>
                     <Input placeholder="cth. Budi Hartono" {...field} />
@@ -91,10 +147,15 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isSubmitting}>
-              <Plus className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Menambahkan..." : "Tambah"}
-            </Button>
+            <DialogFooter className="pt-4">
+                {editingStudent && (
+                    <Button type="button" variant="ghost" onClick={handleCancelEdit}>Batal</Button>
+                )}
+                <Button type="submit" disabled={isSubmitting}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {isSubmitting ? "Menyimpan..." : (editingStudent ? "Simpan Perubahan" : "Tambah Siswa")}
+                </Button>
+            </DialogFooter>
           </form>
         </Form>
         
@@ -104,10 +165,21 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
             <div className="p-4 space-y-2">
               {students.length > 0 ? students.map(student => (
                 <div key={student.id} className="flex items-center justify-between p-2 bg-secondary rounded-md">
-                  <span>{student.name}</span>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(student.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                   <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={student.photoUrl} alt={student.name} />
+                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <span>{student.name}</span>
+                   </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(student)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(student.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               )) : <p className="text-sm text-muted-foreground text-center py-4">Belum ada siswa.</p>}
             </div>

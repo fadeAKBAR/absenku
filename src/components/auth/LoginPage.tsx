@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getUsers } from '@/lib/data';
+import type { User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +24,15 @@ export function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    async function fetchUsers() {
+      const storedUsers = await getUsers();
+      setUsers(storedUsers);
+    }
+    fetchUsers();
+  }, []);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -34,15 +45,14 @@ export function LoginPage() {
   const onSubmit = (values: z.infer<typeof loginSchema>) => {
     setIsSubmitting(true);
     
-    // --- MOCK LOGIN ---
-    // In a real app, you would make an API call here.
-    // For this prototype, we'll just check for a test user.
     setTimeout(() => {
-      if (values.email === 'guru@sekolah.id' && values.password === 'password') {
-        localStorage.setItem('user_authenticated', 'true');
+      const user = users.find(u => u.email === values.email && u.password === values.password);
+
+      if (user) {
+        localStorage.setItem('user_authenticated', JSON.stringify(user));
         toast({
           title: 'Login Berhasil',
-          description: 'Selamat datang kembali!',
+          description: `Selamat datang kembali, ${user.name}!`,
         });
         router.push('/dashboard');
       } else {
@@ -115,7 +125,7 @@ export function LoginPage() {
             </Form>
         </CardContent>
         <CardFooter className="text-xs text-center text-muted-foreground">
-            <p>Gunakan email: guru@sekolah.id & password: password</p>
+             <p>Gunakan akun yang terdaftar di sistem.</p>
         </CardFooter>
     </Card>
   );

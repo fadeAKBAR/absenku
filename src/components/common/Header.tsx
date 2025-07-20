@@ -1,19 +1,19 @@
+"use client";
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { BookUser, GanttChartSquare, LogOut } from 'lucide-react';
+import { BookUser, GanttChartSquare, LogOut, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type HeaderProps = {
   onManageStudents: () => void;
   onManageCategories: () => void;
+  onManageUsers: () => void;
 };
 
-export function Header({ onManageStudents, onManageCategories }: HeaderProps) {
+export function Header({ onManageStudents, onManageCategories, onManageUsers }: HeaderProps) {
   const router = useRouter();
 
   const handleLogout = () => {
-    // In a real app, you'd clear tokens, etc.
-    // For this prototype, we just navigate to login.
     localStorage.removeItem('user_authenticated');
     router.push('/');
   };
@@ -43,11 +43,15 @@ export function Header({ onManageStudents, onManageCategories }: HeaderProps) {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onManageStudents}>
             <BookUser className="mr-0 md:mr-2 h-4 w-4" />
-            <span className="hidden md:inline">Manage Students</span>
+            <span className="hidden md:inline">Siswa</span>
           </Button>
           <Button variant="outline" size="sm" onClick={onManageCategories}>
             <GanttChartSquare className="mr-0 md:mr-2 h-4 w-4" />
-             <span className="hidden md:inline">Manage Categories</span>
+             <span className="hidden md:inline">Kategori</span>
+          </Button>
+           <Button variant="outline" size="sm" onClick={onManageUsers}>
+            <Users className="mr-0 md:mr-2 h-4 w-4" />
+             <span className="hidden md:inline">Pengguna</span>
           </Button>
           <Button variant="destructive" size="sm" onClick={handleLogout}>
              <LogOut className="mr-0 md:mr-2 h-4 w-4" />

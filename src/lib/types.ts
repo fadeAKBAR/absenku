@@ -1,6 +1,7 @@
 export interface Student {
   id: string;
   name: string;
+  photoUrl?: string;
   createdAt: number;
 }
 
@@ -22,7 +23,16 @@ export interface Rating {
 export interface RecapData {
   studentId: string;
   studentName: string;
+  photoUrl?: string;
   overallAverage: number;
   categoryAverages: { [categoryId: string]: { name: string; average: number } };
   totalRatings: number;
+}
+
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    password?: string; // Should be handled securely in a real app
+    createdAt: number;
 }
