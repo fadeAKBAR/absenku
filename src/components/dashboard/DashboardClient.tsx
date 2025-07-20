@@ -18,6 +18,7 @@ import { AttendanceManager } from './AttendanceManager';
 import { MonthlyAttendanceRecap } from './MonthlyAttendanceRecap';
 import { CalendarCheck, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SystemInstructions } from './SystemInstructions';
 
 export default function DashboardClient() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -153,13 +154,14 @@ export default function DashboardClient() {
               onRatingSaved={handleDataUpdate}
             />
           </div>
-          <div className="lg:col-span-2 xl:col-span-3">
+          <div className="lg:col-span-2 xl:col-span-3 flex flex-col gap-8">
             <Recap
               students={students}
               categories={categories}
               ratings={ratings}
               attendance={attendance}
             />
+            <SystemInstructions />
           </div>
         </div>
       </main>
