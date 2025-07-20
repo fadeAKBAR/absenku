@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { AttendanceManager } from './AttendanceManager';
 import { CalendarCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function DashboardClient() {
   const [students, setStudents] = useState<Student[]>([]);
