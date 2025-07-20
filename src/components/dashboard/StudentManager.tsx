@@ -45,6 +45,8 @@ type StudentManagerProps = {
   onUpdate: () => void;
 };
 
+const NO_POSITION_VALUE = 'no-position';
+
 export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: StudentManagerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -89,13 +91,13 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
         address: student.address,
         phone: student.phone,
         parentPhone: student.parentPhone,
-        positionId: student.positionId || ''
+        positionId: student.positionId || undefined
     });
   };
 
   const handleCancelEdit = () => {
     setEditingStudent(null);
-    form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "", positionId: "" });
+    form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" });
   };
 
   async function onSubmit(values: z.infer<typeof studentSchema>) {
@@ -109,7 +111,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
       const studentData = {
           ...values,
           password: values.password || undefined,
-          positionId: values.positionId || undefined
+          positionId: values.positionId === NO_POSITION_VALUE ? undefined : values.positionId
       }
       if (editingStudent) {
         await updateStudent(editingStudent.id, studentData);
@@ -118,7 +120,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
         await addStudent(studentData as z.infer<typeof studentSchema> & { password: string });
         toast({ title: "Sukses", description: "Siswa baru telah ditambahkan." });
       }
-      form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "", positionId: "" });
+      form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" });
       setEditingStudent(null);
       onUpdate();
     } catch (error: any) {
@@ -197,14 +199,14 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="flex items-center gap-2"><Award className="h-4 w-4"/> Jabatan</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih jabatan" />
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectItem value="">Tanpa Jabatan</SelectItem>
+                                <SelectItem value={NO_POSITION_VALUE}>Tanpa Jabatan</SelectItem>
                                 {positions.map(pos => (
                                     <SelectItem key={pos.id} value={pos.id}>{pos.name}</SelectItem>
                                 ))}
