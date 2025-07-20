@@ -1,7 +1,7 @@
 
 
 import type { Student, Category, Rating, User, Attendance, AppSettings, RecapData } from './types';
-import { format, set, startOfWeek } from 'date-fns';
+import { format, set, startOfWeek, differenceInMinutes } from 'date-fns';
 
 // --- In-memory data store for prototype ---
 // In a real app, this would be a database.
@@ -30,6 +30,8 @@ let settings: AppSettings = {
     checkOutTime: "15:30"
 }
 
+const ATTENDANCE_CATEGORY_ID = "kehadiran-sistem";
+
 
 // --- Helper Functions ---
 
@@ -41,11 +43,9 @@ const loadFromLocalStorage = <T>(key: string, defaultValue: T): T => {
     const item = window.localStorage.getItem(key);
     if (item) {
         const parsedItem = JSON.parse(item);
-        // If the default value is an array, don't merge, just return the parsed array.
         if (Array.isArray(defaultValue)) {
             return parsedItem;
         }
-        // For objects, merge with default values to ensure new settings are applied
         if (typeof defaultValue === 'object' && defaultValue !== null) {
           return { ...defaultValue, ...parsedItem };
         }
@@ -68,8 +68,19 @@ const saveToLocalStorage = <T>(key: string, value: T) => {
   }
 };
 
+const ensureAttendanceCategory = () => {
+    if (!categories.find(c => c.id === ATTENDANCE_CATEGORY_ID)) {
+        categories.unshift({
+            id: ATTENDANCE_CATEGORY_ID,
+            name: "Kehadiran",
+            isSystem: true,
+            createdAt: 0
+        });
+        saveToLocalStorage('app_categories', categories);
+    }
+}
+
 // --- Data Initialization ---
-// This ensures data persists across reloads in the browser.
 if (typeof window !== 'undefined') {
   users = loadFromLocalStorage('app_users', users);
   students = loadFromLocalStorage('app_students', []);
@@ -77,6 +88,7 @@ if (typeof window !== 'undefined') {
   ratings = loadFromLocalStorage('app_ratings', []);
   attendance = loadFromLocalStorage('app_attendance', []);
   settings = loadFromLocalStorage('app_settings', settings);
+  ensureAttendanceCategory();
 }
 
 
@@ -97,6 +109,9 @@ export const saveSettings = async (newSettings: AppSettings): Promise<AppSetting
 // --- User Management ---
 export const getUsers = async (): Promise<User[]> => {
   await simulateDelay(50);
+  if (!users || !Array.isArray(users)) {
+    return [];
+  }
   return [...users].sort((a,b) => a.name.localeCompare(b.name));
 };
 
@@ -159,15 +174,11 @@ export const addStudent = async (data: Omit<Student, 'id' | 'createdAt'>): Promi
   return newStudent;
 };
 
-export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt'>>): Promise<Student> => {
+export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt' | 'email' | 'name'>>): Promise<Student> => {
     await simulateDelay(200);
     let studentToUpdate = students.find(s => s.id === id);
     if (!studentToUpdate) {
         throw new Error("Siswa tidak ditemukan");
-    }
-
-    if (data.email && students.some(s => s.email === data.email && s.id !== id)) {
-        throw new Error("Email siswa sudah terdaftar.");
     }
     
     // Create a new object for the updated student data to avoid direct mutation issues
@@ -205,11 +216,15 @@ export const deleteStudent = async (id: string): Promise<void> => {
 // --- Category Management ---
 export const getCategories = async (): Promise<Category[]> => {
   await simulateDelay(100);
+  ensureAttendanceCategory();
   return [...categories].sort((a,b) => a.name.localeCompare(b.name));
 };
 
 export const addCategory = async (name: string): Promise<Category> => {
   await simulateDelay(200);
+  if (name.toLowerCase() === 'kehadiran') {
+    throw new Error("Kategori 'Kehadiran' adalah kategori sistem dan tidak dapat ditambahkan secara manual.");
+  }
   const newCategory: Category = {
     id: `cat${Date.now()}`,
     name,
@@ -222,6 +237,11 @@ export const addCategory = async (name: string): Promise<Category> => {
 
 export const deleteCategory = async (id: string): Promise<void> => {
   await simulateDelay(200);
+  const categoryToDelete = categories.find(c => c.id === id);
+  if (categoryToDelete?.isSystem) {
+      throw new Error("Kategori sistem tidak dapat dihapus.");
+  }
+
   categories = categories.filter(c => c.id !== id);
   // Also remove this category from all ratings
   ratings.forEach(rating => {
@@ -242,13 +262,62 @@ export const getRatings = async (): Promise<Rating[]> => {
     return [...ratings];
 };
 
+const calculateAttendanceRating = (date: string, studentId: string): number => {
+    const studentAttendance = attendance.find(a => a.studentId === studentId && a.date === date);
+
+    if (!studentAttendance || !studentAttendance.checkIn) {
+        // If absent or no check-in, 0 stars
+        return 0;
+    }
+
+    if (studentAttendance.status === 'present') {
+        return 5;
+    }
+
+    if (studentAttendance.status === 'late') {
+        const checkInTime = new Date(studentAttendance.checkIn);
+        const [h, m] = settings.lateTime.split(':').map(Number);
+        const lateTimeThreshold = set(checkInTime, { hours: h, minutes: m, seconds: 0, milliseconds: 0 });
+
+        const minutesLate = differenceInMinutes(checkInTime, lateTimeThreshold);
+
+        if (minutesLate <= 10) return 4;
+        if (minutesLate <= 30) return 3;
+        return 1;
+    }
+    
+    // For sick/permit, maybe a neutral score? Let's give 5 for now as they are excused.
+    if (studentAttendance.status === 'sick' || studentAttendance.status === 'permit') {
+        return 5;
+    }
+
+    return 0;
+}
+
 export const saveRating = async (ratingData: Omit<Rating, 'id' | 'createdAt'>): Promise<Rating> => {
     await simulateDelay(300);
-    const existingIndex = ratings.findIndex(r => r.studentId === ratingData.studentId && r.date === ratingData.date);
+    
+    const attendanceRating = calculateAttendanceRating(ratingData.date, ratingData.studentId);
+    
+    const allRatings = {
+        ...ratingData.ratings,
+        [ATTENDANCE_CATEGORY_ID]: attendanceRating
+    };
+    
+    const ratedValues = Object.values(allRatings).filter(r => r !== undefined && r !== null);
+    const average = ratedValues.length > 0 ? ratedValues.reduce((acc, r) => acc + r, 0) / ratedValues.length : 0;
+
+    const finalRatingData = {
+        ...ratingData,
+        ratings: allRatings,
+        average: average,
+    }
+
+    const existingIndex = ratings.findIndex(r => r.studentId === finalRatingData.studentId && r.date === finalRatingData.date);
     const newRating: Rating = {
-      ...ratingData,
-      id: `${ratingData.studentId}-${ratingData.date}`,
-      createdAt: new Date(ratingData.date).getTime(),
+      ...finalRatingData,
+      id: `${finalRatingData.studentId}-${finalRatingData.date}`,
+      createdAt: new Date(finalRatingData.date).getTime(),
     }
     if (existingIndex > -1) {
         ratings[existingIndex] = newRating;

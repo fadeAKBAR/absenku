@@ -15,6 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { StarRating } from '@/components/common/StarRating';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 
 type RatingInputProps = {
   students: Student[];
@@ -29,6 +30,8 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
   const [dailyRatings, setDailyRatings] = useState<{ [categoryId: string]: number }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const manualCategories = useMemo(() => categories.filter(c => !c.isSystem), [categories]);
 
   const presentStudents = useMemo(() => {
     const todayString = format(date, 'yyyy-MM-dd');
@@ -49,18 +52,20 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
 
   useEffect(() => {
     // Reset ratings when student or date changes
-    const initialRatings = categories.reduce((acc, category) => {
+    const initialRatings = manualCategories.reduce((acc, category) => {
       acc[category.id] = 0;
       return acc;
     }, {} as { [categoryId: string]: number });
     setDailyRatings(initialRatings);
-  }, [selectedStudent, date, categories]);
+  }, [selectedStudent, date, manualCategories]);
 
   const handleRatingChange = (categoryId: string, rating: number) => {
     setDailyRatings(prev => ({ ...prev, [categoryId]: rating }));
   };
 
   const averageRating = useMemo(() => {
+    // Note: This average is only for display on the input card.
+    // The final average including attendance is calculated on the server.
     const ratedValues = Object.values(dailyRatings).filter(r => r > 0);
     if (ratedValues.length === 0) return 0;
     const sum = ratedValues.reduce((acc, r) => acc + r, 0);
@@ -72,8 +77,8 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
       toast({ title: "Validasi Gagal", description: "Silakan pilih siswa.", variant: 'destructive' });
       return;
     }
-    if (Object.values(dailyRatings).some(r => r === 0)) {
-        toast({ title: "Validasi Gagal", description: "Silakan berikan rating untuk semua kategori.", variant: 'destructive' });
+    if (manualCategories.length > 0 && Object.values(dailyRatings).some(r => r === 0)) {
+        toast({ title: "Validasi Gagal", description: "Silakan berikan rating untuk semua kategori manual.", variant: 'destructive' });
         return;
     }
 
@@ -82,8 +87,8 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
       await saveRating({
         studentId: selectedStudent,
         date: format(date, 'yyyy-MM-dd'),
-        ratings: dailyRatings,
-        average: averageRating,
+        ratings: dailyRatings, // Only send manual ratings, server adds attendance
+        average: 0, // Server will calculate the final average
       });
       toast({ title: "Sukses", description: "Rating berhasil disimpan." });
       setSelectedStudent('');
@@ -139,10 +144,14 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
         <div className="space-y-4">
             {categories.map(category => (
                 <div key={category.id} className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{category.name}</span>
+                    <span className="text-sm font-medium flex items-center gap-2">
+                        {category.name}
+                        {category.isSystem && <Badge variant="secondary">Otomatis</Badge>}
+                    </span>
                     <StarRating
-                        rating={dailyRatings[category.id] || 0}
+                        rating={category.isSystem ? 0 : dailyRatings[category.id] || 0}
                         onRatingChange={(rating) => handleRatingChange(category.id, rating)}
+                        disabled={category.isSystem}
                     />
                 </div>
             ))}
@@ -151,7 +160,7 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-4">
         <div className="flex justify-between items-center bg-secondary p-3 rounded-lg">
-            <span className="font-medium">Rata-rata Harian:</span>
+            <span className="font-medium">Rata-rata (Manual):</span>
             <span className="text-2xl font-bold text-primary">{averageRating.toFixed(2)}</span>
         </div>
         <Button onClick={handleSubmit} disabled={isSubmitting || !selectedStudent}>

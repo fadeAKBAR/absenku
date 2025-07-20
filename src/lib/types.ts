@@ -15,6 +15,7 @@ export interface Student {
 export interface Category {
   id: string;
   name: string;
+  isSystem?: boolean; // To identify the "Kehadiran" category
   createdAt: number;
 }
 
