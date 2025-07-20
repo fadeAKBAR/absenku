@@ -1,4 +1,5 @@
-import type { Student, Category, Rating, User } from './types';
+
+import type { Student, Category, Rating, User, Attendance } from './types';
 
 // --- In-memory data store for prototype ---
 // In a real app, this would be a database.
@@ -12,6 +13,8 @@ let students: Student[] = [];
 let categories: Category[] = [];
 
 let ratings: Rating[] = [];
+
+let attendance: Attendance[] = [];
 
 // --- Helper Functions ---
 
@@ -45,6 +48,7 @@ if (typeof window !== 'undefined') {
   students = loadFromLocalStorage('app_students', students);
   categories = loadFromLocalStorage('app_categories', categories);
   ratings = loadFromLocalStorage('app_ratings', ratings);
+  attendance = loadFromLocalStorage('app_attendance', attendance);
 }
 
 
@@ -109,8 +113,10 @@ export const deleteStudent = async (id: string): Promise<void> => {
   await simulateDelay(200);
   students = students.filter(s => s.id !== id);
   ratings = ratings.filter(r => r.studentId !== id);
+  attendance = attendance.filter(a => a.studentId !== id);
   saveToLocalStorage('app_students', students);
   saveToLocalStorage('app_ratings', ratings);
+  saveToLocalStorage('app_attendance', attendance);
 };
 
 // --- Category Management ---
@@ -169,3 +175,29 @@ export const saveRating = async (ratingData: Omit<Rating, 'id' | 'createdAt'>): 
     saveToLocalStorage('app_ratings', ratings);
     return newRating;
 };
+
+// --- Attendance Management ---
+export const getAttendance = async (): Promise<Attendance[]> => {
+  await simulateDelay(50);
+  return [...attendance];
+}
+
+export const saveAttendance = async (date: string, records: { [studentId: string]: 'present' | 'absent' | 'sick' | 'permit' }): Promise<void> => {
+  await simulateDelay(300);
+  Object.entries(records).forEach(([studentId, status]) => {
+    const existingIndex = attendance.findIndex(a => a.studentId === studentId && a.date === date);
+    const newRecord: Attendance = {
+      id: `${studentId}-${date}`,
+      studentId,
+      date,
+      status,
+      createdAt: Date.now(),
+    };
+    if (existingIndex > -1) {
+      attendance[existingIndex] = newRecord;
+    } else {
+      attendance.push(newRecord);
+    }
+  });
+  saveToLocalStorage('app_attendance', attendance);
+}

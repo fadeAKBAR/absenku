@@ -1,20 +1,25 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Download } from 'lucide-react';
+import { Download, BarChart2 } from 'lucide-react';
 import { startOfWeek, startOfMonth, format } from 'date-fns';
-import type { Student, Category, Rating, RecapData } from '@/lib/types';
+import type { Student, Category, Rating, RecapData, Attendance } from '@/lib/types';
 import { exportToCsv } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 
 type RecapProps = {
   students: Student[];
   categories: Category[];
   ratings: Rating[];
+  attendance: Attendance[];
 };
 
 const getStudentInitials = (name: string) => {
@@ -25,17 +30,17 @@ const getStudentInitials = (name: string) => {
     return name.substring(0, 2).toUpperCase();
 };
 
-const RankingList = ({ title, students, highlightClass }: { title: string; students: (RecapData & { photoUrl?: string })[], highlightClass: string }) => (
+const RankingList = ({ title, students, highlightClass }: { title: string; students: RecapData[], highlightClass: string }) => (
     <div>
         <h3 className="font-semibold mb-2">{title}</h3>
         <ul className="space-y-2">
             {students.map((s, index) => (
                 <li key={s.studentId} className="flex items-center justify-between bg-card p-2 rounded-md border">
                     <div className="flex items-center gap-3">
-                        <span className={`font-bold text-lg ${highlightClass}`}>{index + 1}</span>
+                        <span className={`font-bold text-lg ${highlightClass} text-white w-6 h-6 flex items-center justify-center rounded-full`}>{index + 1}</span>
                          <Avatar>
                             <AvatarImage src={s.photoUrl} alt={s.studentName} />
-                            <AvatarFallback className={`${highlightClass} text-white`}>{getStudentInitials(s.studentName)}</AvatarFallback>
+                            <AvatarFallback>{getStudentInitials(s.studentName)}</AvatarFallback>
                         </Avatar>
                         <span className="font-medium">{s.studentName}</span>
                     </div>
@@ -47,10 +52,10 @@ const RankingList = ({ title, students, highlightClass }: { title: string; stude
 );
 
 
-export function Recap({ students, categories, ratings }: RecapProps) {
+export function Recap({ students, categories, ratings, attendance }: RecapProps) {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'all-time'>('weekly');
 
-  const filteredRatings = useMemo(() => {
+  const { filteredRatings, filteredAttendance } = useMemo(() => {
     const now = new Date();
     let startDate: Date;
 
@@ -63,32 +68,29 @@ export function Recap({ students, categories, ratings }: RecapProps) {
         break;
       case 'all-time':
       default:
-        return ratings;
+        return { filteredRatings: ratings, filteredAttendance: attendance };
     }
     const startDateString = format(startDate, 'yyyy-MM-dd');
-    return ratings.filter(r => r.date >= startDateString);
-  }, [period, ratings]);
+    return {
+        filteredRatings: ratings.filter(r => r.date >= startDateString),
+        filteredAttendance: attendance.filter(a => a.date >= startDateString)
+    };
+  }, [period, ratings, attendance]);
 
   const recapData = useMemo(() => {
-    const studentData: { [studentId: string]: { ratings: Rating[] } } = {};
-
-    students.forEach(student => {
-        studentData[student.id] = { ratings: [] };
-    });
-
-    filteredRatings.forEach(rating => {
-        if(studentData[rating.studentId]) {
-            studentData[rating.studentId].ratings.push(rating);
-        }
-    });
-
     return students.map(student => {
-      const studentRatings = studentData[student.id]?.ratings || [];
+      const studentRatings = filteredRatings.filter(r => r.studentId === student.id);
+      const studentAttendance = filteredAttendance.filter(a => a.studentId === student.id);
+      
       const totalRatings = studentRatings.length;
       
       const overallAverage = totalRatings > 0 
         ? studentRatings.reduce((sum, r) => sum + r.average, 0) / totalRatings 
         : 0;
+        
+      const totalPossibleDays = studentAttendance.length;
+      const daysPresent = studentAttendance.filter(a => a.status === 'present').length;
+      const attendancePercentage = totalPossibleDays > 0 ? (daysPresent / totalPossibleDays) * 100 : 0;
 
       const categoryAverages: { [categoryId: string]: { name: string; total: number; count: number; average: number } } = {};
       categories.forEach(cat => {
@@ -111,6 +113,10 @@ export function Recap({ students, categories, ratings }: RecapProps) {
         }
       });
       
+      const dailyAverages = studentRatings
+        .map(r => ({ date: r.date, average: r.average }))
+        .sort((a,b) => a.date.localeCompare(b.date));
+
       return {
         studentId: student.id,
         studentName: student.name,
@@ -118,13 +124,15 @@ export function Recap({ students, categories, ratings }: RecapProps) {
         overallAverage,
         categoryAverages,
         totalRatings,
+        attendancePercentage,
+        daysPresent,
+        dailyAverages
       };
-    }).filter(s => s.totalRatings > 0)
-      .sort((a, b) => b.overallAverage - a.overallAverage);
-  }, [filteredRatings, students, categories]);
+    }).sort((a, b) => b.overallAverage - a.overallAverage);
+  }, [filteredRatings, filteredAttendance, students, categories]);
 
-  const topStudents = recapData.slice(0, 3);
-  const bottomStudents = recapData.slice(-3).reverse();
+  const topStudents = recapData.filter(s => s.totalRatings > 0).slice(0, 3);
+  const bottomStudents = recapData.filter(s => s.totalRatings > 0).slice(-3).reverse();
   
   const handleExport = () => {
     exportToCsv(recapData, categories, period);
@@ -151,7 +159,7 @@ export function Recap({ students, categories, ratings }: RecapProps) {
           </TabsList>
           <TabsContent value={period}>
             <div className="mt-4 space-y-8">
-                {recapData.length > 0 ? (
+                {recapData.filter(s => s.totalRatings > 0).length > 0 ? (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <RankingList title="🏆 Performa Terbaik" students={topStudents} highlightClass="bg-green-500" />
@@ -161,11 +169,12 @@ export function Recap({ students, categories, ratings }: RecapProps) {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[250px]">Siswa</TableHead>
+                                    <TableHead className="w-[200px]">Siswa</TableHead>
+                                    <TableHead className="text-center">Grafik</TableHead>
                                     <TableHead className="text-center">Rata-rata</TableHead>
-                                    <TableHead className="text-center">Total Rating</TableHead>
+                                    <TableHead className="text-center">Kehadiran</TableHead>
                                     {categories.map(cat => (
-                                    <TableHead key={cat.id} className="text-center">{cat.name}</TableHead>
+                                      <TableHead key={cat.id} className="text-center hidden md:table-cell">{cat.name}</TableHead>
                                     ))}
                                 </TableRow>
                             </TableHeader>
@@ -179,12 +188,39 @@ export function Recap({ students, categories, ratings }: RecapProps) {
                                         </Avatar>
                                         {data.studentName}
                                     </TableCell>
+                                     <TableCell className="text-center">
+                                       <Dialog>
+                                         <DialogTrigger asChild>
+                                           <Button variant="outline" size="icon" disabled={data.dailyAverages.length === 0}>
+                                             <BarChart2 className="h-4 w-4" />
+                                           </Button>
+                                         </DialogTrigger>
+                                         <DialogContent className="max-w-2xl">
+                                           <DialogHeader>
+                                             <DialogTitle>Grafik Performa: {data.studentName}</DialogTitle>
+                                           </DialogHeader>
+                                           <div className="h-80 w-full mt-4">
+                                              <ChartContainer config={{
+                                                average: { label: "Rata-rata", color: "hsl(var(--primary))" },
+                                              }}>
+                                                <BarChart data={data.dailyAverages} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+                                                  <CartesianGrid vertical={false} />
+                                                  <XAxis dataKey="date" tickFormatter={(val) => format(new Date(val), "d MMM")} />
+                                                  <YAxis domain={[0, 5]} />
+                                                  <ChartTooltip content={<ChartTooltipContent />} />
+                                                  <Bar dataKey="average" fill="var(--color-average)" radius={4} />
+                                                </BarChart>
+                                              </ChartContainer>
+                                            </div>
+                                         </DialogContent>
+                                       </Dialog>
+                                     </TableCell>
                                     <TableCell className="font-bold text-center text-primary">{data.overallAverage.toFixed(2)}</TableCell>
-                                    <TableCell className="text-center">{data.totalRatings}</TableCell>
+                                    <TableCell className="text-center">{data.attendancePercentage.toFixed(0)}%</TableCell>
                                     {categories.map(cat => (
-                                    <TableCell key={cat.id} className="text-center">
-                                        {data.categoryAverages[cat.id]?.average.toFixed(2) ?? 'N/A'}
-                                    </TableCell>
+                                      <TableCell key={cat.id} className="text-center hidden md:table-cell">
+                                          {data.categoryAverages[cat.id]?.average.toFixed(2) ?? 'N/A'}
+                                      </TableCell>
                                     ))}
                                 </TableRow>
                                 ))}

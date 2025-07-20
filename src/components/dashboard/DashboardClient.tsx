@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getStudents, getCategories, getRatings, getUsers } from '@/lib/data';
-import type { Student, Category, Rating, User } from '@/lib/types';
+import { getStudents, getCategories, getRatings, getUsers, getAttendance } from '@/lib/data';
+import type { Student, Category, Rating, User, Attendance } from '@/lib/types';
 import { Header } from '@/components/common/Header';
 import { RatingInput } from '@/components/dashboard/RatingInput';
 import { Recap } from '@/components/dashboard/Recap';
@@ -12,12 +13,15 @@ import { CategoryManager } from '@/components/dashboard/CategoryManager';
 import { UserManager } from '@/components/dashboard/UserManager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { AttendanceManager } from './AttendanceManager';
+import { CalendarCheck } from 'lucide-react';
 
 export default function DashboardClient() {
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
@@ -25,7 +29,6 @@ export default function DashboardClient() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Simple auth check for prototype
     try {
       const userLoggedIn = localStorage.getItem('user_authenticated');
       if (userLoggedIn) {
@@ -47,16 +50,18 @@ export default function DashboardClient() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [studentsData, categoriesData, ratingsData, usersData] = await Promise.all([
+      const [studentsData, categoriesData, ratingsData, usersData, attendanceData] = await Promise.all([
         getStudents(),
         getCategories(),
         getRatings(),
-        getUsers()
+        getUsers(),
+        getAttendance()
       ]);
       setStudents(studentsData);
       setCategories(categoriesData);
       setRatings(ratingsData);
       setUsers(usersData);
+      setAttendance(attendanceData);
     } catch (error) {
       console.error("Failed to fetch data", error);
       toast({ title: "Error", description: "Gagal memuat data dari server.", variant: "destructive"});
@@ -74,13 +79,13 @@ export default function DashboardClient() {
   const [isStudentManagerOpen, setStudentManagerOpen] = useState(false);
   const [isCategoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [isUserManagerOpen, setUserManagerOpen] = useState(false);
+  const [isAttendanceManagerOpen, setAttendanceManagerOpen] = useState(false);
 
   const handleDataUpdate = async () => {
     await fetchData();
   };
 
   if (!isAuthenticated) {
-    // Show a blank screen or a simple loader while redirecting
     return (
         <div className="w-full h-screen flex items-center justify-center">
             <p>Mengarahkan ke halaman login...</p>
@@ -119,10 +124,15 @@ export default function DashboardClient() {
 
       <main className="flex-1 p-4 md:p-8 container mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
-          <div className="lg:col-span-1 xl:col-span-1">
+          <div className="lg:col-span-1 xl:col-span-1 flex flex-col gap-8">
+            <Button size="lg" onClick={() => setAttendanceManagerOpen(true)}>
+              <CalendarCheck className="mr-2 h-5 w-5" />
+              Kelola Presensi Hari Ini
+            </Button>
             <RatingInput
               students={students}
               categories={categories}
+              attendance={attendance}
               onRatingSaved={handleDataUpdate}
             />
           </div>
@@ -131,6 +141,7 @@ export default function DashboardClient() {
               students={students}
               categories={categories}
               ratings={ratings}
+              attendance={attendance}
             />
           </div>
         </div>
@@ -152,6 +163,13 @@ export default function DashboardClient() {
         isOpen={isUserManagerOpen}
         onOpenChange={setUserManagerOpen}
         users={users}
+        onUpdate={handleDataUpdate}
+      />
+      <AttendanceManager
+        isOpen={isAttendanceManagerOpen}
+        onOpenChange={setAttendanceManagerOpen}
+        students={students}
+        attendance={attendance}
         onUpdate={handleDataUpdate}
       />
     </div>

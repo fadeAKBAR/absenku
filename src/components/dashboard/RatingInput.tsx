@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Save } from 'lucide-react';
-import type { Student, Category } from '@/lib/types';
+import type { Student, Category, Attendance } from '@/lib/types';
 import { saveRating } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
@@ -18,15 +19,33 @@ import { cn } from '@/lib/utils';
 type RatingInputProps = {
   students: Student[];
   categories: Category[];
+  attendance: Attendance[];
   onRatingSaved: () => void;
 };
 
-export function RatingInput({ students, categories, onRatingSaved }: RatingInputProps) {
+export function RatingInput({ students, categories, attendance, onRatingSaved }: RatingInputProps) {
   const [selectedStudent, setSelectedStudent] = useState<string>('');
   const [date, setDate] = useState<Date>(new Date());
   const [dailyRatings, setDailyRatings] = useState<{ [categoryId: string]: number }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const presentStudents = useMemo(() => {
+    const todayString = format(date, 'yyyy-MM-dd');
+    const presentStudentIds = new Set(
+      attendance
+        .filter(a => a.date === todayString && a.status === 'present')
+        .map(a => a.studentId)
+    );
+    return students.filter(s => presentStudentIds.has(s.id));
+  }, [date, attendance, students]);
+
+  useEffect(() => {
+    // Reset student selection if they are not present on the newly selected date
+    if (selectedStudent && !presentStudents.some(s => s.id === selectedStudent)) {
+        setSelectedStudent('');
+    }
+  }, [date, presentStudents, selectedStudent]);
 
   useEffect(() => {
     // Reset ratings when student or date changes
@@ -50,11 +69,11 @@ export function RatingInput({ students, categories, onRatingSaved }: RatingInput
 
   const handleSubmit = async () => {
     if (!selectedStudent) {
-      toast({ title: "Validation Error", description: "Please select a student.", variant: 'destructive' });
+      toast({ title: "Validasi Gagal", description: "Silakan pilih siswa.", variant: 'destructive' });
       return;
     }
     if (Object.values(dailyRatings).some(r => r === 0)) {
-        toast({ title: "Validation Error", description: "Please provide a rating for all categories.", variant: 'destructive' });
+        toast({ title: "Validasi Gagal", description: "Silakan berikan rating untuk semua kategori.", variant: 'destructive' });
         return;
     }
 
@@ -66,10 +85,11 @@ export function RatingInput({ students, categories, onRatingSaved }: RatingInput
         ratings: dailyRatings,
         average: averageRating,
       });
-      toast({ title: "Success", description: "Rating saved successfully." });
+      toast({ title: "Sukses", description: "Rating berhasil disimpan." });
+      setSelectedStudent('');
       onRatingSaved();
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save rating.", variant: 'destructive' });
+      toast({ title: "Error", description: "Gagal menyimpan rating.", variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -79,21 +99,9 @@ export function RatingInput({ students, categories, onRatingSaved }: RatingInput
     <Card className="w-full transition-shadow hover:shadow-lg">
       <CardHeader>
         <CardTitle>Input Rating Harian</CardTitle>
-        <CardDescription>Pilih siswa, tanggal, dan berikan rating.</CardDescription>
+        <CardDescription>Pilih siswa yang hadir, tanggal, dan berikan rating.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
-        <div className="grid gap-2">
-          <Select onValueChange={setSelectedStudent} value={selectedStudent}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih Siswa" />
-            </SelectTrigger>
-            <SelectContent>
-              {students.map(student => (
-                <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         <div className="grid gap-2">
           <Popover>
             <PopoverTrigger asChild>
@@ -110,10 +118,23 @@ export function RatingInput({ students, categories, onRatingSaved }: RatingInput
                 mode="single"
                 selected={date}
                 onSelect={(d) => setDate(d || new Date())}
+                disabled={(date) => date > new Date() || date < new Date("2024-01-01")}
                 initialFocus
               />
             </PopoverContent>
           </Popover>
+        </div>
+         <div className="grid gap-2">
+          <Select onValueChange={setSelectedStudent} value={selectedStudent} disabled={presentStudents.length === 0}>
+            <SelectTrigger>
+              <SelectValue placeholder={presentStudents.length > 0 ? "Pilih Siswa (Hadir)" : "Tidak ada siswa hadir"} />
+            </SelectTrigger>
+            <SelectContent>
+              {presentStudents.map(student => (
+                <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-4">
             {categories.map(category => (
@@ -133,7 +154,7 @@ export function RatingInput({ students, categories, onRatingSaved }: RatingInput
             <span className="font-medium">Rata-rata Harian:</span>
             <span className="text-2xl font-bold text-primary">{averageRating.toFixed(2)}</span>
         </div>
-        <Button onClick={handleSubmit} disabled={isSubmitting}>
+        <Button onClick={handleSubmit} disabled={isSubmitting || !selectedStudent}>
           <Save className="mr-2 h-4 w-4" />
           {isSubmitting ? "Menyimpan..." : "Simpan Rating"}
         </Button>

@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { type RecapData, type Category } from "./types";
@@ -8,19 +9,20 @@ export function cn(...inputs: ClassValue[]) {
 
 export function exportToCsv(data: RecapData[], categories: Category[], period: string) {
   const categoryHeaders = categories.map(c => `${c.name} Avg.`);
-  const headers = ['Student Name', 'Overall Average', 'Total Ratings', ...categoryHeaders];
+  const headers = ['Student Name', 'Overall Average', 'Total Ratings', 'Attendance (%)', ...categoryHeaders];
 
   const rows = data.map(item => {
     const studentName = `"${item.studentName}"`;
     const overallAverage = item.overallAverage.toFixed(2);
     const totalRatings = item.totalRatings;
+    const attendance = item.attendancePercentage.toFixed(1);
     
     const categoryValues = categories.map(cat => {
       const catData = item.categoryAverages[cat.id];
       return catData ? catData.average.toFixed(2) : 'N/A';
     });
     
-    return [studentName, overallAverage, totalRatings, ...categoryValues].join(',');
+    return [studentName, overallAverage, totalRatings, attendance, ...categoryValues].join(',');
   });
 
   const csvContent = [headers.join(','), ...rows].join('\n');

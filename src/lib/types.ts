@@ -1,3 +1,4 @@
+
 export interface Student {
   id: string;
   name: string;
@@ -20,6 +21,14 @@ export interface Rating {
   createdAt: number;
 }
 
+export interface Attendance {
+    id: string;
+    studentId: string;
+    date: string; // YYYY-MM-DD
+    status: 'present' | 'absent' | 'sick' | 'permit';
+    createdAt: number;
+}
+
 export interface RecapData {
   studentId: string;
   studentName: string;
@@ -27,6 +36,9 @@ export interface RecapData {
   overallAverage: number;
   categoryAverages: { [categoryId: string]: { name: string; average: number } };
   totalRatings: number;
+  attendancePercentage: number;
+  daysPresent: number;
+  dailyAverages: { date: string; average: number }[];
 }
 
 export interface User {
