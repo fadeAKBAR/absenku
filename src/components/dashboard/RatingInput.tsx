@@ -3,6 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { format, set, differenceInMinutes } from 'date-fns';
+import { id } from 'date-fns/locale';
 import { Calendar as CalendarIcon, Save } from 'lucide-react';
 import type { Student, Category, Attendance, AppSettings, Rating } from '@/lib/types';
 import { getRatings, saveRating } from '@/lib/data';
@@ -175,7 +176,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
                 className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : <span>Pilih tanggal</span>}
+                {date ? format(date, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
@@ -185,6 +186,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
                 onSelect={(d) => setDate(d || new Date())}
                 disabled={(date) => date > new Date() || date < new Date("2024-01-01")}
                 initialFocus
+                locale={id}
               />
             </PopoverContent>
           </Popover>

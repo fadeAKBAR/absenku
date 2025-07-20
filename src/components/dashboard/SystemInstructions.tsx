@@ -16,7 +16,7 @@ export function SystemInstructions() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
             <Info className="h-6 w-6 text-primary" />
-            Panduan Sistem GradeWise
+            Panduan Sistem
         </CardTitle>
         <CardDescription>Penjelasan mengenai alur kerja, aturan, dan fitur utama aplikasi.</CardDescription>
       </CardHeader>
