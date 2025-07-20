@@ -158,10 +158,6 @@ export default function StudentDashboardClient() {
 
     return { monthlySummary: summary, calendarModifiers: modifiers };
   }, [attendance]);
-
-  if (!student || !settings) {
-    return <div className="flex items-center justify-center min-h-screen">Mengarahkan...</div>;
-  }
   
   const getGreeting = () => {
       const hour = new Date().getHours();
@@ -337,6 +333,10 @@ export default function StudentDashboardClient() {
     return name.substring(0, 2).toUpperCase();
   };
 
+  if (!student || !settings) {
+    return <div className="flex items-center justify-center min-h-screen">Mengarahkan...</div>;
+  }
+
   return (
     <>
     <AlertDialog open={showLocationError} onOpenChange={setShowLocationError}>
@@ -484,10 +484,10 @@ export default function StudentDashboardClient() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center font-mono">
-                                            {att.checkIn ? format(new Date(att.checkIn), 'HH:mm') : '-'}
+                                            {att.checkIn ? format(new Date(att.checkIn), 'HH:mm:ss') : '-'}
                                         </TableCell>
                                         <TableCell className="text-center font-mono">
-                                             {att.checkOut ? format(new Date(att.checkOut), 'HH:mm') : '-'}
+                                             {att.checkOut ? format(new Date(att.checkOut), 'HH:mm:ss') : '-'}
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -559,5 +559,3 @@ export default function StudentDashboardClient() {
     </>
   );
 }
-
-    
