@@ -1,0 +1,28 @@
+export interface Student {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
+export interface Rating {
+  id: string;
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  ratings: { [categoryId: string]: number };
+  average: number;
+  createdAt: number;
+}
+
+export interface RecapData {
+  studentId: string;
+  studentName: string;
+  overallAverage: number;
+  categoryAverages: { [categoryId: string]: { name: string; average: number } };
+  totalRatings: number;
+}
