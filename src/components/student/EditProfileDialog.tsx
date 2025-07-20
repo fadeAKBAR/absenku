@@ -25,10 +25,20 @@ import { Label } from '../ui/label';
 
 const profileSchema = z.object({
   password: z.string().min(6, "Password minimal 6 karakter.").optional().or(z.literal('')),
+  confirmPassword: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
   parentPhone: z.string().optional(),
+}).refine(data => {
+    if (data.password && data.password !== data.confirmPassword) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Konfirmasi password tidak cocok.",
+    path: ["confirmPassword"],
 });
+
 
 type EditProfileDialogProps = {
   isOpen: boolean;
@@ -40,11 +50,13 @@ type EditProfileDialogProps = {
 export function EditProfileDialog({ isOpen, onOpenChange, student, onUpdate }: EditProfileDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       password: '',
+      confirmPassword: '',
       address: student.address || '',
       phone: student.phone || '',
       parentPhone: student.parentPhone || '',
@@ -55,6 +67,7 @@ export function EditProfileDialog({ isOpen, onOpenChange, student, onUpdate }: E
     if (student) {
       form.reset({
         password: '',
+        confirmPassword: '',
         address: student.address || '',
         phone: student.phone || '',
         parentPhone: student.parentPhone || '',
@@ -153,6 +166,24 @@ export function EditProfileDialog({ isOpen, onOpenChange, student, onUpdate }: E
                         </FormControl>
                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground">
                             {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                        </button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Konfirmasi Password Baru</FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Ketik ulang password" {...field} />
+                        </FormControl>
+                         <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground">
+                            {showConfirmPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
                         </button>
                       </div>
                       <FormMessage />

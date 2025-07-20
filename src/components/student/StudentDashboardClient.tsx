@@ -6,10 +6,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, set } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User } from 'lucide-react';
+import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User, Trophy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getAttendanceForStudent, checkInStudent, checkOutStudent, getSettings, updateStudent } from '@/lib/data';
-import type { Student, Attendance, AppSettings } from '@/lib/types';
+import { getAttendanceForStudent, checkInStudent, checkOutStudent, getSettings, updateStudent, getWeeklyLeaderboard } from '@/lib/data';
+import type { Student, Attendance, AppSettings, RecapData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,6 +25,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { ReportAbsenceDialog } from './ReportAbsenceDialog';
 import { EditProfileDialog } from './EditProfileDialog';
+import { StarRating } from '../common/StarRating';
 
 const statusMapping: { [key in Attendance['status']]: { text: string; color: string; icon: React.ReactNode } } = {
   present: { text: 'Hadir', color: 'text-green-600', icon: <CheckCircle className="h-5 w-5" /> },
@@ -40,6 +41,7 @@ export default function StudentDashboardClient() {
   const [student, setStudent] = useState<Student | null>(null);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [leaderboard, setLeaderboard] = useState<RecapData[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingLocation, setIsCheckingLocation] = useState(false);
@@ -64,14 +66,16 @@ export default function StudentDashboardClient() {
 
   const fetchData = useCallback(async (studentId: string) => {
     try {
-      const [attendanceData, settingsData] = await Promise.all([
+      const [attendanceData, settingsData, leaderboardData] = await Promise.all([
           getAttendanceForStudent(studentId),
-          getSettings()
+          getSettings(),
+          getWeeklyLeaderboard()
       ]);
       setSettings(settingsData);
       setAttendance(attendanceData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       const todayRecord = attendanceData.find(a => a.date === todayString) || null;
       setTodayAttendance(todayRecord);
+      setLeaderboard(leaderboardData);
     } catch (error) {
       toast({ title: "Error", description: "Gagal memuat data presensi.", variant: "destructive" });
     }
@@ -277,6 +281,15 @@ export default function StudentDashboardClient() {
     );
   }
 
+  const getStudentInitials = (name: string) => {
+    const names = name.split(' ');
+    if (names.length > 1) {
+        return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+
   return (
     <>
     <AlertDialog open={showLocationError} onOpenChange={setShowLocationError}>
@@ -330,8 +343,8 @@ export default function StudentDashboardClient() {
         </div>
       </header>
 
-      <main className="container mx-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-1">
+      <main className="container mx-auto p-4 md:p-8 grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+        <div className="xl:col-span-1 flex flex-col gap-8">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -344,8 +357,41 @@ export default function StudentDashboardClient() {
               {renderAttendanceCard()}
             </CardContent>
           </Card>
+           <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-6 w-6 text-yellow-500" />
+                Papan Peringkat Mingguan
+              </CardTitle>
+              <CardDescription>Performa terbaik minggu ini.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-64">
+                <ul className="space-y-3">
+                    {leaderboard.length > 0 ? leaderboard.slice(0, 10).map((s, index) => (
+                         <li key={s.studentId} className="flex items-center justify-between bg-secondary p-3 rounded-md">
+                            <div className="flex items-center gap-3">
+                                <span className={`font-bold text-lg ${index < 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'} w-8 h-8 flex items-center justify-center rounded-full`}>{index + 1}</span>
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={s.photoUrl} alt={s.studentName} />
+                                    <AvatarFallback>{getStudentInitials(s.studentName)}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium text-sm">{s.studentName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-primary">{s.overallAverage.toFixed(2)}</span>
+                                <StarRating rating={Math.round(s.overallAverage)} onRatingChange={() => {}} size={16} />
+                            </div>
+                        </li>
+                    )) : (
+                        <p className="text-center text-muted-foreground py-8">Belum ada data peringkat untuk minggu ini.</p>
+                    )}
+                </ul>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </div>
-        <div className="md:col-span-2">
+        <div className="xl:col-span-2">
             <Card className="shadow-lg">
                  <CardHeader>
                     <CardTitle className="flex items-center gap-2">

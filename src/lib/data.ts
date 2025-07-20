@@ -1,7 +1,7 @@
 
 
-import type { Student, Category, Rating, User, Attendance, AppSettings } from './types';
-import { format, set } from 'date-fns';
+import type { Student, Category, Rating, User, Attendance, AppSettings, RecapData } from './types';
+import { format, set, startOfWeek } from 'date-fns';
 
 // --- In-memory data store for prototype ---
 // In a real app, this would be a database.
@@ -20,7 +20,7 @@ let attendance: Attendance[] = [];
 
 let settings: AppSettings = {
     schoolName: "SMKN 3 SOPPENG",
-    schoolLogoUrl: "", // Default empty, user can set it.
+    schoolLogoUrl: "https://www.smkn3soppeng.sch.id/media_library/images/355dfdca525613f8b5e873ec18c6a658.png",
     location: {
         latitude: -4.329808,
         longitude: 120.028856,
@@ -356,4 +356,37 @@ export const saveAttendance = async (date: string, records: { [studentId: string
      }
   });
   saveToLocalStorage('app_attendance', attendance);
+}
+
+// --- Leaderboard Data ---
+export const getWeeklyLeaderboard = async(): Promise<RecapData[]> => {
+    await simulateDelay(200);
+    const now = new Date();
+    const startDate = startOfWeek(now, { weekStartsOn: 1 }); // Monday
+    const startDateString = format(startDate, 'yyyy-MM-dd');
+
+    const weeklyRatings = ratings.filter(r => r.date >= startDateString);
+    
+    const weeklyRecap = students.map(student => {
+        const studentRatings = weeklyRatings.filter(r => r.studentId === student.id);
+        const totalRatings = studentRatings.length;
+        const overallAverage = totalRatings > 0 
+          ? studentRatings.reduce((sum, r) => sum + r.average, 0) / totalRatings 
+          : 0;
+        
+        return {
+          studentId: student.id,
+          studentName: student.name,
+          photoUrl: student.photoUrl,
+          overallAverage,
+          totalRatings,
+          // Add dummy values for other RecapData fields that aren't needed here
+          categoryAverages: {},
+          attendancePercentage: 0,
+          daysPresent: 0,
+          dailyAverages: []
+        };
+    }).filter(s => s.totalRatings > 0).sort((a,b) => b.overallAverage - a.overallAverage);
+    
+    return weeklyRecap;
 }
