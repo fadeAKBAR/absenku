@@ -21,6 +21,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
+import { Label } from '../ui/label';
 
 const profileSchema = z.object({
   password: z.string().min(6, "Password minimal 6 karakter.").optional().or(z.literal('')),
