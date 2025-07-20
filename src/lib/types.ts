@@ -31,6 +31,7 @@ export interface Attendance {
     checkIn: string | null; // ISO string
     checkOut: string | null; // ISO string
     status: 'present' | 'absent' | 'sick' | 'permit' | 'late' | 'no_checkout';
+    reason?: string; // Alasan untuk izin atau sakit
     createdAt: number;
 }
 

@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin } from 'lucide-react';
+import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAttendanceForStudent, checkInStudent, checkOutStudent, SCHOOL_LOCATION, MAX_DISTANCE_METERS } from '@/lib/data';
 import type { Student, Attendance } from '@/lib/types';
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table';
 import { ScrollArea } from '../ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { ReportAbsenceDialog } from './ReportAbsenceDialog';
 
 const statusMapping: { [key in Attendance['status']]: { text: string; color: string; icon: React.ReactNode } } = {
   present: { text: 'Hadir', color: 'text-green-600', icon: <CheckCircle className="h-5 w-5" /> },
@@ -43,6 +44,7 @@ export default function StudentDashboardClient() {
   const [showLocationError, setShowLocationError] = useState(false);
   const [locationErrorMessage, setLocationErrorMessage] = useState('');
   const [canCheckOut, setCanCheckOut] = useState(false);
+  const [isReportAbsenceOpen, setReportAbsenceOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -184,10 +186,16 @@ export default function StudentDashboardClient() {
       if (hour < 18) return 'Selamat Sore';
       return 'Selamat Malam';
   }
+  
+  const handleAbsenceReported = () => {
+    if(student) {
+      fetchData(student.id);
+    }
+  }
 
   const renderAttendanceCard = () => {
-    // Already checked in
-    if (todayAttendance && todayAttendance.checkIn) {
+    // Already checked in or reported sick/permit
+    if (todayAttendance) {
       // Already checked out
       if (todayAttendance.checkOut) {
         return (
@@ -197,6 +205,16 @@ export default function StudentDashboardClient() {
              <p className="text-sm text-muted-foreground">Anda sudah check-out hari ini. Sampai jumpa besok!</p>
           </div>
         );
+      }
+
+      if (todayAttendance.status === 'sick' || todayAttendance.status === 'permit') {
+           return (
+            <div className={`flex flex-col items-center justify-center text-center p-8 rounded-lg bg-secondary ${statusMapping[todayAttendance.status].color}`}>
+                <div className="mb-4">{React.cloneElement(statusMapping[todayAttendance.status].icon as React.ReactElement, { className: "h-16 w-16" })}</div>
+                <p className="text-2xl font-bold">Laporan Terkirim</p>
+                <p className="text-sm text-muted-foreground">Status Anda hari ini: {statusMapping[todayAttendance.status].text}. Semoga lekas sembuh jika sakit.</p>
+            </div>
+           )
       }
       
       // Not yet checked out
@@ -223,7 +241,7 @@ export default function StudentDashboardClient() {
     // Not checked in yet
     return (
       <div className="flex flex-col items-center text-center gap-4">
-        <p className="text-muted-foreground">Anda belum melakukan presensi hari ini. Silakan lakukan check-in.</p>
+        <p className="text-muted-foreground">Anda belum melakukan presensi hari ini.</p>
         <Button size="lg" className="w-full text-lg py-8" onClick={handleCheckIn} disabled={isSubmitting || isCheckingLocation}>
            {isCheckingLocation ? (
                  <><Loader2 className="mr-4 h-8 w-8 animate-spin" /> Memeriksa Lokasi...</>
@@ -232,6 +250,9 @@ export default function StudentDashboardClient() {
            ) : (
                  <><LogIn className="mr-4 h-8 w-8" /> Check In</>
            )}
+        </Button>
+         <Button variant="outline" className="w-full" onClick={() => setReportAbsenceOpen(true)}>
+            <Edit className="mr-2 h-4 w-4" /> Lapor Izin / Sakit
         </Button>
       </div>
     );
@@ -252,6 +273,12 @@ export default function StudentDashboardClient() {
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
+     <ReportAbsenceDialog
+        isOpen={isReportAbsenceOpen}
+        onOpenChange={setReportAbsenceOpen}
+        studentId={student.id}
+        onSubmitted={handleAbsenceReported}
+      />
     <div className="bg-secondary/50 min-h-screen">
       <header className="bg-card border-b sticky top-0 z-10 p-4">
         <div className="container mx-auto flex items-center justify-between">

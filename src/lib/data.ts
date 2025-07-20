@@ -221,20 +221,19 @@ export const getAttendanceForStudent = async(studentId: string): Promise<Attenda
   return attendance.filter(a => a.studentId === studentId);
 }
 
-const saveAttendanceRecord = (studentId: string, date: string, status: Attendance['status'], checkInTime: string | null = null, checkOutTime: string | null = null) => {
+const saveAttendanceRecord = (studentId: string, date: string, status: Attendance['status'], details: Partial<Omit<Attendance, 'id' | 'studentId' | 'date' | 'status' | 'createdAt'>> = {}) => {
     const existingIndex = attendance.findIndex(a => a.studentId === studentId && a.date === date);
     
     if (existingIndex > -1) {
         const existingRecord = attendance[existingIndex];
         // Teacher override
-        if (['sick', 'permit', 'absent'].includes(status)) {
+        if (['sick', 'permit', 'absent'].includes(status) && !details.checkIn) {
             existingRecord.status = status;
             existingRecord.checkIn = null;
             existingRecord.checkOut = null;
-        } else {
-            // Student action
-            if (checkInTime) existingRecord.checkIn = checkInTime;
-            if (checkOutTime) existingRecord.checkOut = checkOutTime;
+            existingRecord.reason = details.reason;
+        } else { // Student action
+            Object.assign(existingRecord, details);
             existingRecord.status = status;
         }
     } else {
@@ -242,8 +241,9 @@ const saveAttendanceRecord = (studentId: string, date: string, status: Attendanc
         id: `${studentId}-${date}`,
         studentId,
         date,
-        checkIn: checkInTime,
-        checkOut: checkOutTime,
+        checkIn: details.checkIn || null,
+        checkOut: details.checkOut || null,
+        reason: details.reason,
         status,
         createdAt: Date.now(),
       };
@@ -258,16 +258,24 @@ export const checkInStudent = async (studentId: string, checkInTime: Date): Prom
     lateTime.setHours(7, 0, 0, 0); // 7:00 AM
 
     const status = checkInTime > lateTime ? 'late' : 'present';
-    saveAttendanceRecord(studentId, dateString, status, checkInTime.toISOString(), null);
+    saveAttendanceRecord(studentId, dateString, status, { checkIn: checkInTime.toISOString() });
     saveToLocalStorage('app_attendance', attendance);
 }
+
+export const reportAbsence = async (studentId: string, status: 'sick' | 'permit', reason: string): Promise<void> => {
+    await simulateDelay(300);
+    const dateString = format(new Date(), 'yyyy-MM-dd');
+    saveAttendanceRecord(studentId, dateString, status, { reason });
+    saveToLocalStorage('app_attendance', attendance);
+};
+
 
 export const checkOutStudent = async (studentId: string, checkOutTime: Date): Promise<void> => {
     await simulateDelay(300);
     const dateString = format(checkOutTime, 'yyyy-MM-dd');
     const existingRecord = attendance.find(a => a.studentId === studentId && a.date === dateString);
     if (existingRecord) {
-        saveAttendanceRecord(studentId, dateString, existingRecord.status, existingRecord.checkIn, checkOutTime.toISOString());
+        saveAttendanceRecord(studentId, dateString, existingRecord.status, { checkOut: checkOutTime.toISOString() });
         saveToLocalStorage('app_attendance', attendance);
     }
 }
@@ -276,7 +284,11 @@ export const checkOutStudent = async (studentId: string, checkOutTime: Date): Pr
 export const saveAttendance = async (date: string, records: { [studentId: string]: Attendance['status'] }): Promise<void> => {
   await simulateDelay(300);
   Object.entries(records).forEach(([studentId, status]) => {
-     saveAttendanceRecord(studentId, date, status);
+     // Don't overwrite student's own report unless it's to mark as absent
+     const existingRecord = attendance.find(a => a.studentId === studentId && a.date === date);
+     if (!existingRecord || (existingRecord && !['sick', 'permit'].includes(existingRecord.status))) {
+        saveAttendanceRecord(studentId, date, status);
+     }
   });
   saveToLocalStorage('app_attendance', attendance);
 }

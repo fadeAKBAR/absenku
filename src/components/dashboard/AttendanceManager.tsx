@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Check, X, Hand, FlaskConical, Save, Clock, AlertTriangle } from 'lucide-react';
+import { Check, X, Hand, FlaskConical, Save, Clock, AlertTriangle, MessageSquareQuote } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Attendance } from '@/lib/types';
 import { saveAttendance } from '@/lib/data';
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type AttendanceManagerProps = {
   isOpen: boolean;
@@ -87,18 +88,22 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
     }
   }
 
+  const getReasonForStudent = (studentId: string): string | undefined => {
+      return attendance.find(a => a.studentId === studentId && a.date === todayString)?.reason;
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Kelola Presensi Hari Ini ({format(new Date(), 'PPP')})</DialogTitle>
-          <DialogDescription>Tandai kehadiran setiap siswa untuk hari ini. Status Hadir/Terlambat diatur oleh siswa saat check-in.</DialogDescription>
+          <DialogDescription>Tandai kehadiran setiap siswa untuk hari ini. Status Hadir/Terlambat diatur oleh siswa saat check-in. Status Izin/Sakit dikirim oleh siswa.</DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-2 my-4">
             <Button variant="outline" size="sm" onClick={() => markAll('absent')}>Tandai Semua Alpa</Button>
         </div>
-
+        <TooltipProvider>
         <ScrollArea className="h-96 border rounded-md">
           <div className="p-4 space-y-2">
             {students.map(student => (
@@ -109,6 +114,16 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
                     <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <span>{student.name}</span>
+                    {getReasonForStudent(student.id) && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <MessageSquareQuote className="h-4 w-4 text-blue-500 cursor-pointer" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p className="max-w-xs">{getReasonForStudent(student.id)}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
                 </div>
                 
                 <ToggleGroup type="single" value={attendanceRecords[student.id] || 'absent'} onValueChange={(value: Status) => handleStatusChange(student.id, value)}>
@@ -136,6 +151,7 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
             ))}
           </div>
         </ScrollArea>
+        </TooltipProvider>
         <DialogFooter>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
                 <Save className="mr-2 h-4 w-4" />
