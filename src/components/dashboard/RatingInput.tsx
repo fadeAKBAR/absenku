@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, set, differenceInMinutes } from 'date-fns';
 import { Calendar as CalendarIcon, Save } from 'lucide-react';
-import type { Student, Category, Attendance } from '@/lib/types';
+import type { Student, Category, Attendance, AppSettings } from '@/lib/types';
 import { saveRating } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
@@ -17,27 +17,63 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 
+const ATTENDANCE_CATEGORY_ID = "kehadiran-sistem";
+
 type RatingInputProps = {
   students: Student[];
   categories: Category[];
   attendance: Attendance[];
+  settings: AppSettings;
   onRatingSaved: () => void;
 };
 
-export function RatingInput({ students, categories, attendance, onRatingSaved }: RatingInputProps) {
+const calculateAttendanceRating = (date: string, studentId: string, attendanceData: Attendance[], appSettings: AppSettings): number => {
+    const studentAttendance = attendanceData.find(a => a.studentId === studentId && a.date === date);
+
+    if (!studentAttendance || !studentAttendance.checkIn) {
+        return 0; // Absent or no check-in
+    }
+
+    if (studentAttendance.status === 'present') {
+        return 5;
+    }
+
+    if (studentAttendance.status === 'late') {
+        const checkInTime = new Date(studentAttendance.checkIn);
+        const [h, m] = appSettings.lateTime.split(':').map(Number);
+        const lateTimeThreshold = set(checkInTime, { hours: h, minutes: m, seconds: 0, milliseconds: 0 });
+
+        const minutesLate = differenceInMinutes(checkInTime, lateTimeThreshold);
+
+        if (minutesLate <= 10) return 4;
+        if (minutesLate <= 30) return 3;
+        return 1;
+    }
+    
+    if (studentAttendance.status === 'sick' || studentAttendance.status === 'permit') {
+        return 5; // Excused
+    }
+
+    return 0;
+}
+
+
+export function RatingInput({ students, categories, attendance, settings, onRatingSaved }: RatingInputProps) {
   const [selectedStudent, setSelectedStudent] = useState<string>('');
   const [date, setDate] = useState<Date>(new Date());
   const [dailyRatings, setDailyRatings] = useState<{ [categoryId: string]: number }>({});
+  const [attendanceRating, setAttendanceRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const manualCategories = useMemo(() => categories.filter(c => !c.isSystem), [categories]);
+  const attendanceCategory = useMemo(() => categories.find(c => c.isSystem), [categories]);
 
   const presentStudents = useMemo(() => {
-    const todayString = format(date, 'yyyy-MM-dd');
+    const selectedDateString = format(date, 'yyyy-MM-dd');
     const presentStudentIds = new Set(
       attendance
-        .filter(a => a.date === todayString && (a.status === 'present' || a.status === 'late'))
+        .filter(a => a.date === selectedDateString && (a.status === 'present' || a.status === 'late'))
         .map(a => a.studentId)
     );
     return students.filter(s => presentStudentIds.has(s.id));
@@ -51,26 +87,32 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
   }, [date, presentStudents, selectedStudent]);
 
   useEffect(() => {
-    // Reset ratings when student or date changes
+    // Reset ratings and calculate new attendance rating when student or date changes
     const initialRatings = manualCategories.reduce((acc, category) => {
       acc[category.id] = 0;
       return acc;
     }, {} as { [categoryId: string]: number });
     setDailyRatings(initialRatings);
-  }, [selectedStudent, date, manualCategories]);
+    
+    if (selectedStudent) {
+      const newAttendanceRating = calculateAttendanceRating(format(date, 'yyyy-MM-dd'), selectedStudent, attendance, settings);
+      setAttendanceRating(newAttendanceRating);
+    } else {
+      setAttendanceRating(0);
+    }
+
+  }, [selectedStudent, date, manualCategories, attendance, settings]);
 
   const handleRatingChange = (categoryId: string, rating: number) => {
     setDailyRatings(prev => ({ ...prev, [categoryId]: rating }));
   };
 
   const averageRating = useMemo(() => {
-    // Note: This average is only for display on the input card.
-    // The final average including attendance is calculated on the server.
-    const ratedValues = Object.values(dailyRatings).filter(r => r > 0);
-    if (ratedValues.length === 0) return 0;
-    const sum = ratedValues.reduce((acc, r) => acc + r, 0);
-    return sum / ratedValues.length;
-  }, [dailyRatings]);
+    const allRatings = [...Object.values(dailyRatings), attendanceRating].filter(r => r > 0);
+    if (allRatings.length === 0) return 0;
+    const sum = allRatings.reduce((acc, r) => acc + r, 0);
+    return sum / allRatings.length;
+  }, [dailyRatings, attendanceRating]);
 
   const handleSubmit = async () => {
     if (!selectedStudent) {
@@ -87,7 +129,7 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
       await saveRating({
         studentId: selectedStudent,
         date: format(date, 'yyyy-MM-dd'),
-        ratings: dailyRatings, // Only send manual ratings, server adds attendance
+        ratings: dailyRatings, // Server will add attendance rating automatically
         average: 0, // Server will calculate the final average
       });
       toast({ title: "Sukses", description: "Rating berhasil disimpan." });
@@ -142,16 +184,28 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
           </Select>
         </div>
         <div className="space-y-4">
-            {categories.map(category => (
+             {attendanceCategory && (
+                 <div key={attendanceCategory.id} className="flex items-center justify-between">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                        {attendanceCategory.name}
+                        <Badge variant="secondary">Otomatis</Badge>
+                    </span>
+                    <StarRating
+                        rating={attendanceRating}
+                        onRatingChange={() => {}}
+                        disabled={true}
+                    />
+                </div>
+            )}
+            {manualCategories.map(category => (
                 <div key={category.id} className="flex items-center justify-between">
                     <span className="text-sm font-medium flex items-center gap-2">
                         {category.name}
-                        {category.isSystem && <Badge variant="secondary">Otomatis</Badge>}
                     </span>
                     <StarRating
-                        rating={category.isSystem ? 0 : dailyRatings[category.id] || 0}
+                        rating={dailyRatings[category.id] || 0}
                         onRatingChange={(rating) => handleRatingChange(category.id, rating)}
-                        disabled={category.isSystem}
+                        disabled={!selectedStudent}
                     />
                 </div>
             ))}
@@ -160,7 +214,7 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-4">
         <div className="flex justify-between items-center bg-secondary p-3 rounded-lg">
-            <span className="font-medium">Rata-rata (Manual):</span>
+            <span className="font-medium">Rata-rata (Total):</span>
             <span className="text-2xl font-bold text-primary">{averageRating.toFixed(2)}</span>
         </div>
         <Button onClick={handleSubmit} disabled={isSubmitting || !selectedStudent}>

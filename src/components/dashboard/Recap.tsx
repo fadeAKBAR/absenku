@@ -98,12 +98,15 @@ export function Recap({ students, categories, ratings, attendance }: RecapProps)
       });
 
       studentRatings.forEach(r => {
-        Object.entries(r.ratings).forEach(([catId, score]) => {
-          if (categoryAverages[catId]) {
-            categoryAverages[catId].total += score;
-            categoryAverages[catId].count += 1;
-          }
-        });
+        // Ensure rating.ratings is an object before trying to iterate over it
+        if (r.ratings && typeof r.ratings === 'object') {
+            Object.entries(r.ratings).forEach(([catId, score]) => {
+                if (categoryAverages[catId]) {
+                    categoryAverages[catId].total += score;
+                    categoryAverages[catId].count += 1;
+                }
+            });
+        }
       });
       
       Object.keys(categoryAverages).forEach(catId => {

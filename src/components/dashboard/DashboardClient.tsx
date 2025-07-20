@@ -149,6 +149,7 @@ export default function DashboardClient() {
               students={students}
               categories={categories}
               attendance={attendance}
+              settings={settings}
               onRatingSaved={handleDataUpdate}
             />
           </div>
