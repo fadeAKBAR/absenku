@@ -218,6 +218,16 @@ export const deleteStudent = async (id: string): Promise<void> => {
   saveToLocalStorage('app_attendance', attendance);
 };
 
+export const resetDevice = async (id: string): Promise<void> => {
+    await simulateDelay(200);
+    let studentToUpdate = students.find(s => s.id === id);
+    if (!studentToUpdate) {
+        throw new Error("Siswa tidak ditemukan");
+    }
+    studentToUpdate.deviceId = undefined;
+    saveToLocalStorage('app_students', students);
+};
+
 // --- Position Management ---
 export const getPositions = async (): Promise<Position[]> => {
     await simulateDelay(50);
@@ -435,9 +445,24 @@ const saveAttendanceRecord = (studentId: string, date: string, status: Attendanc
     }
 }
 
-export const checkInStudent = async (studentId: string, checkInTime: Date): Promise<void> => {
+export const checkInStudent = async (studentId: string, checkInTime: Date, deviceId: string): Promise<void> => {
     await simulateDelay(300);
     const dateString = format(checkInTime, 'yyyy-MM-dd');
+    
+    // Device validation logic
+    const student = students.find(s => s.id === studentId);
+    if (!student) {
+        throw new Error("Siswa tidak ditemukan.");
+    }
+
+    if (!student.deviceId) {
+        // First check-in, register device
+        student.deviceId = deviceId;
+        saveToLocalStorage('app_students', students);
+    } else if (student.deviceId !== deviceId) {
+        // Device mismatch
+        throw new Error("Perangkat tidak terdaftar. Silakan check-in menggunakan perangkat yang pertama kali Anda gunakan, atau hubungi guru untuk mereset perangkat Anda.");
+    }
     
     const [h, m] = settings.lateTime.split(':').map(Number);
     const lateTime = set(new Date(checkInTime), { hours: h, minutes: m, seconds: 0, milliseconds: 0 });

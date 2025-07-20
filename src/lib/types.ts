@@ -10,6 +10,7 @@ export interface Student {
   phone?: string;
   parentPhone?: string;
   positionId?: string; // ID of the assigned position
+  deviceId?: string; // Unique ID for the registered device
   createdAt: number;
 }
 

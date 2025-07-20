@@ -58,6 +58,8 @@ export default function StudentDashboardClient() {
 
   const todayString = format(new Date(), 'yyyy-MM-dd');
 
+  // --- START OF HOOKS ---
+
   const checkCanCheckOut = useCallback(() => {
     if (!settings) return;
     const now = new Date();
@@ -159,6 +161,8 @@ export default function StudentDashboardClient() {
     return { monthlySummary: summary, calendarModifiers: modifiers };
   }, [attendance]);
   
+  // --- END OF HOOKS ---
+
   const getGreeting = () => {
       const hour = new Date().getHours();
       if (hour < 12) return 'Selamat Pagi';
@@ -197,6 +201,15 @@ export default function StudentDashboardClient() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c; // in metres
   }
+
+  const getOrCreateDeviceId = () => {
+      let deviceId = localStorage.getItem('device_id');
+      if (!deviceId) {
+          deviceId = crypto.randomUUID();
+          localStorage.setItem('device_id', deviceId);
+      }
+      return deviceId;
+  }
   
   const handleLocationError = (message: string) => {
     setLocationErrorMessage(message);
@@ -213,6 +226,8 @@ export default function StudentDashboardClient() {
        return;
     }
 
+    const deviceId = getOrCreateDeviceId();
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
@@ -227,11 +242,12 @@ export default function StudentDashboardClient() {
         setIsSubmitting(true);
         setIsCheckingLocation(false);
         try {
-            await checkInStudent(student.id, new Date());
+            await checkInStudent(student.id, new Date(), deviceId);
             toast({ title: "Sukses", description: "Check-in berhasil dicatat." });
-            fetchData(student.id);
-        } catch (error) {
-            toast({ title: "Error", description: "Gagal melakukan check-in.", variant: "destructive" });
+            // Refetch student data to get the updated deviceId
+            loadStudentFromStorage();
+        } catch (error: any) {
+            toast({ title: "Error", description: error.message || "Gagal melakukan check-in.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
@@ -334,7 +350,11 @@ export default function StudentDashboardClient() {
   };
 
   if (!student || !settings) {
-    return <div className="flex items-center justify-center min-h-screen">Mengarahkan...</div>;
+    return (
+       <div className="w-full h-screen flex items-center justify-center">
+         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+       </div>
+    );
   }
 
   return (
@@ -342,7 +362,7 @@ export default function StudentDashboardClient() {
     <AlertDialog open={showLocationError} onOpenChange={setShowLocationError}>
         <AlertDialogContent>
             <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2"><MapPin className="h-6 w-6 text-destructive"/> Error Lokasi</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2"><MapPin className="h-6 w-6 text-destructive"/> Error Lokasi atau Perangkat</AlertDialogTitle>
             <AlertDialogDescription>
                 {locationErrorMessage}
             </AlertDialogDescription>

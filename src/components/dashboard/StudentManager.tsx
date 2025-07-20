@@ -5,10 +5,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, Trash2, Edit, User as UserIcon, Eye, EyeOff, Award } from 'lucide-react';
+import { Plus, Trash2, Edit, User as UserIcon, Eye, EyeOff, Award, SmartphoneNfc } from 'lucide-react';
 
 import type { Student, Position } from '@/lib/types';
-import { addStudent, deleteStudent, updateStudent, getPositions } from '@/lib/data';
+import { addStudent, deleteStudent, updateStudent, getPositions, resetDevice } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 import {
@@ -138,6 +138,18 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
         onUpdate();
       } catch (error) {
         toast({ title: "Error", description: "Gagal menghapus siswa.", variant: 'destructive' });
+      }
+    }
+  }
+
+  async function handleResetDevice(id: string) {
+    if (window.confirm("Apakah Anda yakin ingin mereset perangkat untuk siswa ini? Siswa akan dapat mendaftarkan perangkat baru saat check-in berikutnya.")) {
+      try {
+        await resetDevice(id);
+        toast({ title: "Sukses", description: "Perangkat siswa telah direset." });
+        onUpdate();
+      } catch (error) {
+        toast({ title: "Error", description: "Gagal mereset perangkat.", variant: 'destructive' });
       }
     }
   }
@@ -317,6 +329,11 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                       </div>
                    </div>
                   <div className="flex items-center gap-1">
+                    {student.deviceId && (
+                      <Button variant="outline" size="icon" className="h-8 w-8" title="Reset Perangkat" onClick={() => handleResetDevice(student.id)}>
+                        <SmartphoneNfc className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(student)}>
                       <Edit className="h-4 w-4" />
                     </Button>
