@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, Trash2, Edit, User as UserIcon } from 'lucide-react';
+import { Plus, Trash2, Edit, User as UserIcon, Eye, EyeOff } from 'lucide-react';
 
 import type { Student } from '@/lib/types';
 import { addStudent, deleteStudent, updateStudent } from '@/lib/data';
@@ -23,12 +23,16 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '../ui/textarea';
 
 const studentSchema = z.object({
   name: z.string().min(3, "Nama siswa minimal 3 karakter."),
   email: z.string().email("Format email tidak valid."),
-  password: z.string().min(6, "Password minimal 6 karakter.").optional(),
+  password: z.string().min(6, "Password minimal 6 karakter.").optional().or(z.literal('')),
   photoUrl: z.string().optional(),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  parentPhone: z.string().optional(),
 });
 
 type StudentManagerProps = {
@@ -41,12 +45,13 @@ type StudentManagerProps = {
 export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: StudentManagerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
-    defaultValues: { name: "", email: "", password: "", photoUrl: "" },
+    defaultValues: { name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" },
   });
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,12 +67,20 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
 
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
-    form.reset({ name: student.name, email: student.email, password: "", photoUrl: student.photoUrl });
+    form.reset({ 
+        name: student.name, 
+        email: student.email, 
+        password: "", 
+        photoUrl: student.photoUrl,
+        address: student.address,
+        phone: student.phone,
+        parentPhone: student.parentPhone
+    });
   };
 
   const handleCancelEdit = () => {
     setEditingStudent(null);
-    form.reset({ name: "", email: "", password: "", photoUrl: "" });
+    form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" });
   };
 
   async function onSubmit(values: z.infer<typeof studentSchema>) {
@@ -80,17 +93,15 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
     try {
       if (editingStudent) {
         await updateStudent(editingStudent.id, {
-            name: values.name,
-            email: values.email,
-            password: values.password,
-            photoUrl: values.photoUrl
+            ...values,
+            password: values.password || undefined
         });
         toast({ title: "Sukses", description: "Data siswa telah diperbarui." });
       } else {
         await addStudent(values as z.infer<typeof studentSchema> & { password: string });
         toast({ title: "Sukses", description: "Siswa baru telah ditambahkan." });
       }
-      form.reset({ name: "", email: "", password: "", photoUrl: "" });
+      form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" });
       setEditingStudent(null);
       onUpdate();
     } catch (error: any) {
@@ -116,7 +127,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { onOpenChange(open); handleCancelEdit(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}</DialogTitle>
           <DialogDescription>
@@ -126,64 +137,112 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-             <div className="flex flex-col items-center gap-4">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={photoUrl} />
-                  <AvatarFallback>
-                    <UserIcon className="h-12 w-12" />
-                  </AvatarFallback>
-                </Avatar>
-                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                  Ganti Foto
-                </Button>
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileChange}
+            <ScrollArea className="h-[500px] pr-4">
+              <div className="space-y-4">
+                <div className="flex flex-col items-center gap-4">
+                    <Avatar className="h-24 w-24">
+                    <AvatarImage src={photoUrl} />
+                    <AvatarFallback>
+                        <UserIcon className="h-12 w-12" />
+                    </AvatarFallback>
+                    </Avatar>
+                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    Ganti Foto
+                    </Button>
+                    <Input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    />
+                </div>
+
+                <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Nama Siswa</FormLabel>
+                    <FormControl>
+                        <Input placeholder="cth. Budi Hartono" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Email Siswa</FormLabel>
+                    <FormControl>
+                        <Input type="email" placeholder="budi.hartono@sekolah.id" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <div className="relative">
+                        <FormControl>
+                            <Input type={showPassword ? "text" : "password"} placeholder={editingStudent ? "Isi untuk mengubah" : "******"} {...field} />
+                        </FormControl>
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground">
+                            {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                        </button>
+                    </div>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Alamat</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Alamat lengkap siswa" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nomor HP Siswa</FormLabel>
+                      <FormControl>
+                        <Input placeholder="08..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="parentPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nomor HP Orang Tua</FormLabel>
+                      <FormControl>
+                        <Input placeholder="08..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nama Siswa</FormLabel>
-                  <FormControl>
-                    <Input placeholder="cth. Budi Hartono" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Siswa</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="budi.hartono@sekolah.id" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder={editingStudent ? "Isi untuk mengubah" : "******"} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            </ScrollArea>
             <DialogFooter className="pt-4">
                 {editingStudent && (
                     <Button type="button" variant="ghost" onClick={handleCancelEdit}>Batal</Button>

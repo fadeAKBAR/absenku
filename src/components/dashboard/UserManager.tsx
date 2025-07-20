@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, Eye, EyeOff } from 'lucide-react';
 
 import type { User } from '@/lib/types';
 import { addUser, deleteUser, updateUser } from '@/lib/data';
@@ -41,6 +41,7 @@ type UserManagerProps = {
 export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManagerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof userSchema>>({
@@ -149,9 +150,14 @@ export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManag
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder={editingUser ? 'Isi untuk mengubah' : '******'} {...field} />
-                  </FormControl>
+                   <div className="relative">
+                        <FormControl>
+                            <Input type={showPassword ? "text" : "password"} placeholder={editingUser ? 'Isi untuk mengubah' : '******'} {...field} />
+                        </FormControl>
+                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground">
+                            {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                        </button>
+                    </div>
                   <FormMessage />
                 </FormItem>
               )}

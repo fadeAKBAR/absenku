@@ -46,7 +46,10 @@ const loadFromLocalStorage = <T>(key: string, defaultValue: T): T => {
             return parsedItem;
         }
         // For objects, merge with default values to ensure new settings are applied
-        return { ...defaultValue, ...parsedItem };
+        if (typeof defaultValue === 'object' && defaultValue !== null) {
+          return { ...defaultValue, ...parsedItem };
+        }
+        return parsedItem;
     }
     return defaultValue;
   } catch (error) {
@@ -119,6 +122,8 @@ export const updateUser = async (id: string, data: Partial<Omit<User, 'id'|'crea
     Object.assign(userToUpdate, data);
      if (data.password && data.password.trim() === "") {
         delete userToUpdate.password;
+    } else if (data.password) {
+        userToUpdate.password = data.password;
     }
 
     saveToLocalStorage('app_users', users);
@@ -164,14 +169,26 @@ export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id'
     if (data.email && students.some(s => s.email === data.email && s.id !== id)) {
         throw new Error("Email siswa sudah terdaftar.");
     }
+    
+    // Create a new object for the updated student data to avoid direct mutation issues
+    const updatedData = { ...studentToUpdate, ...data };
 
-    Object.assign(studentToUpdate, data);
-    if (data.password && data.password.trim() === "") {
-        delete studentToUpdate.password;
+    // If password field is present but empty, it means we don't want to update it.
+    if (data.password && data.password.trim() !== "") {
+        updatedData.password = data.password;
+    } else {
+        // Keep the old password if the new one is empty
+        updatedData.password = studentToUpdate.password;
+    }
+
+    // Find index and replace
+    const studentIndex = students.findIndex(s => s.id === id);
+    if (studentIndex > -1) {
+        students[studentIndex] = updatedData;
     }
 
     saveToLocalStorage('app_students', students);
-    return studentToUpdate;
+    return updatedData;
 }
 
 

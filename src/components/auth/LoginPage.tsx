@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { LogIn } from 'lucide-react';
+import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, getStudents } from '@/lib/data';
 import type { User, Student } from '@/lib/types';
@@ -24,6 +24,7 @@ export function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
 
@@ -207,9 +208,18 @@ export function LoginPage() {
                         render={({ field }) => (
                             <FormItem>
                                 <Label htmlFor="password">Password</Label>
-                                <FormControl>
-                                    <Input id="password" type="password" placeholder="******" {...field} />
-                                </FormControl>
+                                <div className="relative">
+                                    <FormControl>
+                                        <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="******" {...field} />
+                                    </FormControl>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 px-3 flex items-center text-muted-foreground"
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
                                 <FormMessage />
                             </FormItem>
                         )}

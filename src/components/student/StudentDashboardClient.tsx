@@ -6,9 +6,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, set } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit } from 'lucide-react';
+import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getAttendanceForStudent, checkInStudent, checkOutStudent, getSettings } from '@/lib/data';
+import { getAttendanceForStudent, checkInStudent, checkOutStudent, getSettings, updateStudent } from '@/lib/data';
 import type { Student, Attendance, AppSettings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import {
 import { ScrollArea } from '../ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { ReportAbsenceDialog } from './ReportAbsenceDialog';
+import { EditProfileDialog } from './EditProfileDialog';
 
 const statusMapping: { [key in Attendance['status']]: { text: string; color: string; icon: React.ReactNode } } = {
   present: { text: 'Hadir', color: 'text-green-600', icon: <CheckCircle className="h-5 w-5" /> },
@@ -46,6 +47,7 @@ export default function StudentDashboardClient() {
   const [locationErrorMessage, setLocationErrorMessage] = useState('');
   const [canCheckOut, setCanCheckOut] = useState(false);
   const [isReportAbsenceOpen, setReportAbsenceOpen] = useState(false);
+  const [isEditProfileOpen, setEditProfileOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -75,8 +77,8 @@ export default function StudentDashboardClient() {
     }
   }, [toast, todayString]);
 
-  useEffect(() => {
-    try {
+  const loadStudentFromStorage = () => {
+     try {
       const userString = localStorage.getItem('user_authenticated');
       if (userString) {
         const userData = JSON.parse(userString);
@@ -92,6 +94,10 @@ export default function StudentDashboardClient() {
     } catch (e) {
       router.replace('/');
     }
+  }
+
+  useEffect(() => {
+    loadStudentFromStorage();
   }, [router, fetchData]);
   
   useEffect(() => {
@@ -200,6 +206,12 @@ export default function StudentDashboardClient() {
     }
   }
 
+  const handleProfileUpdate = (updatedStudent: Student) => {
+    setStudent(updatedStudent);
+    localStorage.setItem('user_authenticated', JSON.stringify({ ...updatedStudent, role: 'student'}));
+    toast({ title: "Sukses", description: "Profil Anda berhasil diperbarui." });
+  }
+
   const renderAttendanceCard = () => {
     // Already checked in or reported sick/permit
     if (todayAttendance) {
@@ -286,6 +298,12 @@ export default function StudentDashboardClient() {
         studentId={student.id}
         onSubmitted={handleAbsenceReported}
       />
+     <EditProfileDialog
+        isOpen={isEditProfileOpen}
+        onOpenChange={setEditProfileOpen}
+        student={student}
+        onUpdate={handleProfileUpdate}
+      />
     <div className="bg-secondary/50 min-h-screen">
       <header className="bg-card border-b sticky top-0 z-10 p-4">
         <div className="container mx-auto flex items-center justify-between">
@@ -299,10 +317,16 @@ export default function StudentDashboardClient() {
               <p className="text-sm text-muted-foreground">{student.email}</p>
             </div>
           </div>
-          <Button variant="destructive" size="sm" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+           <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditProfileOpen(true)}>
+                    <User className="mr-2 h-4 w-4"/>
+                    Edit Profil
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                </Button>
+           </div>
         </div>
       </header>
 

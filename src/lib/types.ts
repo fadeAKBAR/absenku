@@ -6,6 +6,9 @@ export interface Student {
   email: string;
   password?: string;
   photoUrl?: string;
+  address?: string;
+  phone?: string;
+  parentPhone?: string;
   createdAt: number;
 }
 
