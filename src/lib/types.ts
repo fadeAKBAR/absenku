@@ -55,6 +55,18 @@ export interface User {
     createdAt: number;
 }
 
+export interface AppSettings {
+    schoolName: string;
+    schoolLogoUrl: string;
+    location: {
+        latitude: number;
+        longitude: number;
+    };
+    checkInRadius: number; // in meters
+    lateTime: string; // HH:mm
+    checkOutTime: string; // HH:mm
+}
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode

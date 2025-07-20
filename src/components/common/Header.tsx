@@ -1,17 +1,31 @@
+
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookUser, GanttChartSquare, LogOut, Users } from 'lucide-react';
+import { BookUser, GanttChartSquare, LogOut, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getSettings } from '@/lib/data';
 
 type HeaderProps = {
   onManageStudents: () => void;
   onManageCategories: () => void;
   onManageUsers: () => void;
+  onManageSettings: () => void;
 };
 
-export function Header({ onManageStudents, onManageCategories, onManageUsers }: HeaderProps) {
+export function Header({ onManageStudents, onManageCategories, onManageUsers, onManageSettings }: HeaderProps) {
   const router = useRouter();
+  const [schoolName, setSchoolName] = useState("Sistem Kredit Poin Siswa");
+
+  useEffect(() => {
+    async function fetchSchoolName() {
+        const settings = await getSettings();
+        if (settings.schoolName) {
+            setSchoolName(settings.schoolName);
+        }
+    }
+    fetchSchoolName();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('user_authenticated');
@@ -121,7 +135,7 @@ export function Header({ onManageStudents, onManageCategories, onManageUsers }: 
                   />
                 </svg>
             </div>
-            <h1 className="text-xl md:text-2xl font-bold text-primary">Sistem Kredit Poin Siswa</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-primary">{schoolName}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onManageStudents}>
@@ -135,6 +149,10 @@ export function Header({ onManageStudents, onManageCategories, onManageUsers }: 
            <Button variant="outline" size="sm" onClick={onManageUsers}>
             <Users className="mr-0 md:mr-2 h-4 w-4" />
              <span className="hidden md:inline">Pengguna</span>
+          </Button>
+           <Button variant="outline" size="icon" onClick={onManageSettings}>
+            <Settings className="h-4 w-4" />
+            <span className="sr-only">Pengaturan</span>
           </Button>
           <Button variant="destructive" size="sm" onClick={handleLogout}>
              <LogOut className="mr-0 md:mr-2 h-4 w-4" />

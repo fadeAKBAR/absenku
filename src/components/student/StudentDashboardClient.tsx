@@ -4,12 +4,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, set } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getAttendanceForStudent, checkInStudent, checkOutStudent, SCHOOL_LOCATION, MAX_DISTANCE_METERS } from '@/lib/data';
-import type { Student, Attendance } from '@/lib/types';
+import { getAttendanceForStudent, checkInStudent, checkOutStudent, getSettings } from '@/lib/data';
+import type { Student, Attendance, AppSettings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,6 +38,7 @@ const statusMapping: { [key in Attendance['status']]: { text: string; color: str
 export default function StudentDashboardClient() {
   const [student, setStudent] = useState<Student | null>(null);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingLocation, setIsCheckingLocation] = useState(false);
@@ -50,16 +51,22 @@ export default function StudentDashboardClient() {
 
   const todayString = format(new Date(), 'yyyy-MM-dd');
 
-  const checkCanCheckOut = () => {
-      const now = new Date();
-      const checkoutTime = new Date();
-      checkoutTime.setHours(15, 30, 0, 0); // 15:30
-      setCanCheckOut(now >= checkoutTime);
-  };
+  const checkCanCheckOut = useCallback(() => {
+    if (!settings) return;
+    const now = new Date();
+    const [h, m] = settings.checkOutTime.split(':').map(Number);
+    const checkoutTime = set(new Date(), { hours: h, minutes: m, seconds: 0, milliseconds: 0 });
+    setCanCheckOut(now >= checkoutTime);
+  }, [settings]);
+
 
   const fetchData = useCallback(async (studentId: string) => {
     try {
-      const attendanceData = await getAttendanceForStudent(studentId);
+      const [attendanceData, settingsData] = await Promise.all([
+          getAttendanceForStudent(studentId),
+          getSettings()
+      ]);
+      setSettings(settingsData);
       setAttendance(attendanceData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       const todayRecord = attendanceData.find(a => a.date === todayString) || null;
       setTodayAttendance(todayRecord);
@@ -85,13 +92,13 @@ export default function StudentDashboardClient() {
     } catch (e) {
       router.replace('/');
     }
-    
-    // Set interval to check if checkout is available
-    const interval = setInterval(checkCanCheckOut, 1000 * 60); // Check every minute
+  }, [router, fetchData]);
+  
+  useEffect(() => {
+    const interval = setInterval(checkCanCheckOut, 1000 * 30); // Check every 30 seconds
     checkCanCheckOut();
     return () => clearInterval(interval);
-
-  }, [router, fetchData]);
+  }, [checkCanCheckOut]);
 
   const handleLogout = () => {
     localStorage.removeItem('user_authenticated');
@@ -119,7 +126,7 @@ export default function StudentDashboardClient() {
   }
 
   const handleCheckIn = async () => {
-    if (!student) return;
+    if (!student || !settings) return;
     setIsCheckingLocation(true);
 
     if (!navigator.geolocation) {
@@ -130,10 +137,10 @@ export default function StudentDashboardClient() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        const distance = calculateDistance(latitude, longitude, SCHOOL_LOCATION.latitude, SCHOOL_LOCATION.longitude);
+        const distance = calculateDistance(latitude, longitude, settings.location.latitude, settings.location.longitude);
 
-        if (distance > MAX_DISTANCE_METERS) {
-           handleLocationError(`Anda berada terlalu jauh dari sekolah (${Math.round(distance)} meter). Check-in hanya bisa dilakukan dalam radius ${MAX_DISTANCE_METERS} meter.`);
+        if (distance > settings.checkInRadius) {
+           handleLocationError(`Anda berada terlalu jauh dari sekolah (${Math.round(distance)} meter). Check-in hanya bisa dilakukan dalam radius ${settings.checkInRadius} meter.`);
            return;
         }
 
@@ -175,7 +182,7 @@ export default function StudentDashboardClient() {
   }
 
 
-  if (!student) {
+  if (!student || !settings) {
     return <div className="flex items-center justify-center min-h-screen">Mengarahkan...</div>;
   }
   
@@ -233,7 +240,7 @@ export default function StudentDashboardClient() {
                  <><LogOut className="mr-4 h-8 w-8" /> Check Out</>
             )}
           </Button>
-          {!canCheckOut && <p className="text-xs text-muted-foreground">Tombol Check Out akan aktif setelah pukul 15:30.</p>}
+          {!canCheckOut && <p className="text-xs text-muted-foreground">Tombol Check Out akan aktif setelah pukul {settings.checkOutTime}.</p>}
         </div>
       );
     }

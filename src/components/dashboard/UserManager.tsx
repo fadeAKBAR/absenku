@@ -1,13 +1,14 @@
+
 "use client";
 
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit } from 'lucide-react';
 
 import type { User } from '@/lib/types';
-import { addUser, deleteUser } from '@/lib/data';
+import { addUser, deleteUser, updateUser } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 import {
@@ -16,6 +17,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +28,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 const userSchema = z.object({
   name: z.string().min(3, "Nama pengguna minimal 3 karakter."),
   email: z.string().email("Format email tidak valid."),
-  password: z.string().min(6, "Password minimal 6 karakter."),
+  password: z.string().min(6, "Password minimal 6 karakter.").optional().or(z.literal('')),
 });
 
 type UserManagerProps = {
@@ -38,6 +40,7 @@ type UserManagerProps = {
 
 export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManagerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof userSchema>>({
@@ -45,15 +48,40 @@ export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManag
     defaultValues: { name: "", email: "", password: "" },
   });
 
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    form.reset({ name: user.name, email: user.email, password: "" });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    form.reset({ name: "", email: "", password: "" });
+  };
+
+
   async function onSubmit(values: z.infer<typeof userSchema>) {
+    if (!editingUser && !values.password) {
+        form.setError("password", { message: "Password wajib diisi untuk pengguna baru."});
+        return;
+    }
+
     setIsSubmitting(true);
     try {
-      await addUser(values);
-      toast({ title: "Sukses", description: "Pengguna baru telah ditambahkan." });
-      form.reset();
+      if (editingUser) {
+          await updateUser(editingUser.id, {
+            name: values.name,
+            email: values.email,
+            password: values.password,
+          });
+          toast({ title: "Sukses", description: "Data pengguna telah diperbarui." });
+      } else {
+         await addUser(values as z.infer<typeof userSchema> & { password: string });
+         toast({ title: "Sukses", description: "Pengguna baru telah ditambahkan." });
+      }
+      handleCancelEdit();
       onUpdate();
     } catch (error) {
-      toast({ title: "Error", description: "Gagal menambahkan pengguna.", variant: 'destructive' });
+      toast({ title: "Error", description: "Gagal menyimpan data pengguna.", variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -80,11 +108,11 @@ export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManag
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => { onOpenChange(open); handleCancelEdit(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Kelola Pengguna</DialogTitle>
-          <DialogDescription>Tambah atau hapus pengguna (guru) yang dapat mengakses sistem.</DialogDescription>
+          <DialogTitle>{editingUser ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}</DialogTitle>
+          <DialogDescription>Tambah, edit, atau hapus pengguna (guru) yang dapat mengakses sistem.</DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
@@ -122,16 +150,21 @@ export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManag
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="******" {...field} />
+                    <Input type="password" placeholder={editingUser ? 'Isi untuk mengubah' : '******'} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Menambahkan..." : "Tambah Pengguna"}
-            </Button>
+            <DialogFooter className="pt-4">
+                {editingUser && (
+                    <Button type="button" variant="ghost" onClick={handleCancelEdit}>Batal</Button>
+                )}
+                 <Button type="submit" disabled={isSubmitting}>
+                    {editingUser ? <Edit className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    {isSubmitting ? "Menyimpan..." : (editingUser ? "Simpan Perubahan" : "Tambah Pengguna")}
+                </Button>
+            </DialogFooter>
           </form>
         </Form>
         
@@ -150,9 +183,14 @@ export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManag
                       <p className="text-muted-foreground">{user.email}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(user.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(user)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(user.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               )) : <p className="text-sm text-muted-foreground text-center py-4">Belum ada pengguna.</p>}
             </div>

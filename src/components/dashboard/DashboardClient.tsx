@@ -3,14 +3,15 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getStudents, getCategories, getRatings, getUsers, getAttendance } from '@/lib/data';
-import type { Student, Category, Rating, User, Attendance } from '@/lib/types';
+import { getStudents, getCategories, getRatings, getUsers, getAttendance, getSettings } from '@/lib/data';
+import type { Student, Category, Rating, User, Attendance, AppSettings } from '@/lib/types';
 import { Header } from '@/components/common/Header';
 import { RatingInput } from '@/components/dashboard/RatingInput';
 import { Recap } from '@/components/dashboard/Recap';
 import { StudentManager } from '@/components/dashboard/StudentManager';
 import { CategoryManager } from '@/components/dashboard/CategoryManager';
 import { UserManager } from '@/components/dashboard/UserManager';
+import { SettingsManager } from '@/components/dashboard/SettingsManager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { AttendanceManager } from './AttendanceManager';
@@ -24,6 +25,7 @@ export default function DashboardClient() {
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
@@ -52,18 +54,20 @@ export default function DashboardClient() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [studentsData, categoriesData, ratingsData, usersData, attendanceData] = await Promise.all([
+      const [studentsData, categoriesData, ratingsData, usersData, attendanceData, settingsData] = await Promise.all([
         getStudents(),
         getCategories(),
         getRatings(),
         getUsers(),
-        getAttendance()
+        getAttendance(),
+        getSettings()
       ]);
       setStudents(studentsData);
       setCategories(categoriesData);
       setRatings(ratingsData);
       setUsers(usersData);
       setAttendance(attendanceData);
+      setSettings(settingsData);
     } catch (error) {
       console.error("Failed to fetch data", error);
       toast({ title: "Error", description: "Gagal memuat data dari server.", variant: "destructive"});
@@ -83,15 +87,16 @@ export default function DashboardClient() {
   const [isUserManagerOpen, setUserManagerOpen] = useState(false);
   const [isAttendanceManagerOpen, setAttendanceManagerOpen] = useState(false);
   const [isMonthlyRecapOpen, setMonthlyRecapOpen] = useState(false);
+  const [isSettingsManagerOpen, setSettingsManagerOpen] = useState(false);
 
   const handleDataUpdate = async () => {
     await fetchData();
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !settings) {
     return (
         <div className="w-full h-screen flex items-center justify-center">
-            <p>Mengarahkan ke halaman login...</p>
+            <p>Mengarahkan...</p>
         </div>
     );
   }
@@ -103,6 +108,7 @@ export default function DashboardClient() {
             onManageStudents={() => setStudentManagerOpen(true)}
             onManageCategories={() => setCategoryManagerOpen(true)}
             onManageUsers={() => setUserManagerOpen(true)}
+            onManageSettings={() => setSettingsManagerOpen(true)}
           />
         <div className="p-8">
           <Skeleton className="h-16 w-full mb-8" />
@@ -123,6 +129,7 @@ export default function DashboardClient() {
         onManageStudents={() => setStudentManagerOpen(true)}
         onManageCategories={() => setCategoryManagerOpen(true)}
         onManageUsers={() => setUserManagerOpen(true)}
+        onManageSettings={() => setSettingsManagerOpen(true)}
       />
 
       <main className="flex-1 p-4 md:p-8 container mx-auto">
@@ -172,6 +179,12 @@ export default function DashboardClient() {
         isOpen={isUserManagerOpen}
         onOpenChange={setUserManagerOpen}
         users={users}
+        onUpdate={handleDataUpdate}
+      />
+       <SettingsManager
+        isOpen={isSettingsManagerOpen}
+        onOpenChange={setSettingsManagerOpen}
+        settings={settings}
         onUpdate={handleDataUpdate}
       />
       <AttendanceManager

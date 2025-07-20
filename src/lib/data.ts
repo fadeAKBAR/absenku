@@ -1,7 +1,7 @@
 
 
-import type { Student, Category, Rating, User, Attendance } from './types';
-import { format } from 'date-fns';
+import type { Student, Category, Rating, User, Attendance, AppSettings } from './types';
+import { format, set } from 'date-fns';
 
 // --- In-memory data store for prototype ---
 // In a real app, this would be a database.
@@ -18,12 +18,18 @@ let ratings: Rating[] = [];
 
 let attendance: Attendance[] = [];
 
-// --- Geolocation Constants ---
-export const SCHOOL_LOCATION = {
-  latitude: -4.329808,
-  longitude: 120.028856,
-};
-export const MAX_DISTANCE_METERS = 50; // Radius 50 meter
+let settings: AppSettings = {
+    schoolName: "SMKN 3 SOPPENG",
+    schoolLogoUrl: "", // Default empty, user can set it.
+    location: {
+        latitude: -4.329808,
+        longitude: 120.028856,
+    },
+    checkInRadius: 50,
+    lateTime: "07:00",
+    checkOutTime: "15:30"
+}
+
 
 // --- Helper Functions ---
 
@@ -33,7 +39,11 @@ const loadFromLocalStorage = <T>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') return defaultValue;
   try {
     const item = window.localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
+    // Merge with default values to ensure new settings are applied
+    if (item) {
+        return { ...defaultValue, ...JSON.parse(item) };
+    }
+    return defaultValue;
   } catch (error) {
     console.error(`Error reading from localStorage key “${key}”:`, error);
     return defaultValue;
@@ -54,10 +64,25 @@ const saveToLocalStorage = <T>(key: string, value: T) => {
 // This ensures data persists across reloads in the browser.
 if (typeof window !== 'undefined') {
   users = loadFromLocalStorage('app_users', users);
-  students = loadFromLocalStorage('app_students', students);
-  categories = loadFromLocalStorage('app_categories', categories);
-  ratings = loadFromLocalStorage('app_ratings', ratings);
-  attendance = loadFromLocalStorage('app_attendance', attendance);
+  students = loadFromLocalStorage('app_students', []);
+  categories = loadFromLocalStorage('app_categories', []);
+  ratings = loadFromLocalStorage('app_ratings', []);
+  attendance = loadFromLocalStorage('app_attendance', []);
+  settings = loadFromLocalStorage('app_settings', settings);
+}
+
+
+// --- Settings Management ---
+export const getSettings = async (): Promise<AppSettings> => {
+    await simulateDelay(50);
+    return settings;
+}
+
+export const saveSettings = async (newSettings: AppSettings): Promise<AppSettings> => {
+    await simulateDelay(300);
+    settings = newSettings;
+    saveToLocalStorage('app_settings', settings);
+    return settings;
 }
 
 
@@ -78,6 +103,23 @@ export const addUser = async (userData: Omit<User, 'id' | 'createdAt'>): Promise
   saveToLocalStorage('app_users', users);
   return newUser;
 };
+
+export const updateUser = async (id: string, data: Partial<Omit<User, 'id'|'createdAt'>>): Promise<User> => {
+    await simulateDelay(200);
+    let userToUpdate = users.find(u => u.id === id);
+    if (!userToUpdate) {
+        throw new Error("Pengguna tidak ditemukan");
+    }
+
+    Object.assign(userToUpdate, data);
+     if (data.password && data.password.trim() === "") {
+        delete userToUpdate.password;
+    }
+
+    saveToLocalStorage('app_users', users);
+    return userToUpdate;
+}
+
 
 export const deleteUser = async (id: string): Promise<void> => {
   await simulateDelay(200);
@@ -119,7 +161,7 @@ export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id'
     }
 
     Object.assign(studentToUpdate, data);
-    if (!data.password) {
+    if (data.password && data.password.trim() === "") {
         delete studentToUpdate.password;
     }
 
@@ -254,8 +296,9 @@ const saveAttendanceRecord = (studentId: string, date: string, status: Attendanc
 export const checkInStudent = async (studentId: string, checkInTime: Date): Promise<void> => {
     await simulateDelay(300);
     const dateString = format(checkInTime, 'yyyy-MM-dd');
-    const lateTime = new Date(checkInTime);
-    lateTime.setHours(7, 0, 0, 0); // 7:00 AM
+    
+    const [h, m] = settings.lateTime.split(':').map(Number);
+    const lateTime = set(new Date(checkInTime), { hours: h, minutes: m, seconds: 0, milliseconds: 0 });
 
     const status = checkInTime > lateTime ? 'late' : 'present';
     saveAttendanceRecord(studentId, dateString, status, { checkIn: checkInTime.toISOString() });
