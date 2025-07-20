@@ -73,7 +73,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
     const selectedDateString = format(date, 'yyyy-MM-dd');
     const presentStudentIds = new Set(
       attendance
-        .filter(a => a.date === selectedDateString && (a.status === 'present' || a.status === 'late'))
+        .filter(a => a.date === selectedDateString && (a.status === 'present' || a.status === 'late' || a.status === 'sick' || a.status === 'permit'))
         .map(a => a.studentId)
     );
     return students.filter(s => presentStudentIds.has(s.id));
@@ -108,7 +108,9 @@ export function RatingInput({ students, categories, attendance, settings, onRati
   };
 
   const averageRating = useMemo(() => {
-    const allRatings = [...Object.values(dailyRatings), attendanceRating].filter(r => r > 0);
+    const filledManualRatings = Object.values(dailyRatings).filter(r => r > 0);
+    const allRatings = [...filledManualRatings, attendanceRating];
+    
     if (allRatings.length === 0) return 0;
     const sum = allRatings.reduce((acc, r) => acc + r, 0);
     return sum / allRatings.length;
@@ -119,17 +121,21 @@ export function RatingInput({ students, categories, attendance, settings, onRati
       toast({ title: "Validasi Gagal", description: "Silakan pilih siswa.", variant: 'destructive' });
       return;
     }
-    if (manualCategories.length > 0 && Object.values(dailyRatings).some(r => r === 0)) {
-        toast({ title: "Validasi Gagal", description: "Silakan berikan rating untuk semua kategori manual.", variant: 'destructive' });
-        return;
-    }
+    
+    // Filter only manual ratings that have been filled (rating > 0)
+    const filledManualRatings = Object.entries(dailyRatings)
+      .filter(([, rating]) => rating > 0)
+      .reduce((acc, [id, rating]) => {
+        acc[id] = rating;
+        return acc;
+      }, {} as { [categoryId: string]: number });
 
     setIsSubmitting(true);
     try {
       await saveRating({
         studentId: selectedStudent,
         date: format(date, 'yyyy-MM-dd'),
-        ratings: dailyRatings, // Server will add attendance rating automatically
+        ratings: filledManualRatings, // Server will add attendance rating automatically
         average: 0, // Server will calculate the final average
       });
       toast({ title: "Sukses", description: "Rating berhasil disimpan." });
@@ -174,7 +180,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
          <div className="grid gap-2">
           <Select onValueChange={setSelectedStudent} value={selectedStudent} disabled={presentStudents.length === 0}>
             <SelectTrigger>
-              <SelectValue placeholder={presentStudents.length > 0 ? "Pilih Siswa (Hadir/Terlambat)" : "Tidak ada siswa hadir"} />
+              <SelectValue placeholder={presentStudents.length > 0 ? "Pilih Siswa (Hadir/Terlambat/Izin)" : "Tidak ada siswa hadir/izin"} />
             </SelectTrigger>
             <SelectContent>
               {presentStudents.map(student => (
@@ -184,7 +190,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
           </Select>
         </div>
         <div className="space-y-4">
-             {attendanceCategory && (
+             {attendanceCategory && selectedStudent && (
                  <div key={attendanceCategory.id} className="flex items-center justify-between">
                     <span className="text-sm font-medium flex items-center gap-2">
                         {attendanceCategory.name}
@@ -215,7 +221,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
       <CardFooter className="flex flex-col items-stretch gap-4">
         <div className="flex justify-between items-center bg-secondary p-3 rounded-lg">
             <span className="font-medium">Rata-rata (Total):</span>
-            <span className="text-2xl font-bold text-primary">{averageRating.toFixed(2)}</span>
+            <span className="text-2xl font-bold text-primary">{selectedStudent ? averageRating.toFixed(2) : '0.00'}</span>
         </div>
         <Button onClick={handleSubmit} disabled={isSubmitting || !selectedStudent}>
           <Save className="mr-2 h-4 w-4" />
