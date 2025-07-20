@@ -39,9 +39,14 @@ const loadFromLocalStorage = <T>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') return defaultValue;
   try {
     const item = window.localStorage.getItem(key);
-    // Merge with default values to ensure new settings are applied
     if (item) {
-        return { ...defaultValue, ...JSON.parse(item) };
+        const parsedItem = JSON.parse(item);
+        // If the default value is an array, don't merge, just return the parsed array.
+        if (Array.isArray(defaultValue)) {
+            return parsedItem;
+        }
+        // For objects, merge with default values to ensure new settings are applied
+        return { ...defaultValue, ...parsedItem };
     }
     return defaultValue;
   } catch (error) {
