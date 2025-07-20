@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid." }).min(1, { message: "Email tidak boleh kosong." }),
@@ -88,13 +87,14 @@ export function LoginPage() {
   return (
     <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-             <div className="mx-auto bg-primary p-3 rounded-lg w-fit mb-4">
-                <Avatar className="h-16 w-16">
-                    {settings?.schoolLogoUrl && <AvatarImage src={settings.schoolLogoUrl} alt={settings.schoolName} />}
-                    <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+             <div className="mx-auto bg-primary/10 p-2 rounded-lg w-20 h-20 flex items-center justify-center mb-4">
+                {settings?.schoolLogoUrl ? (
+                    <img src={settings.schoolLogoUrl} alt={settings.schoolName} className="h-full w-full object-contain"/>
+                ) : (
+                    <span className="text-primary text-lg font-bold">
                         {settings?.schoolName.charAt(0)}
-                    </AvatarFallback>
-                </Avatar>
+                    </span>
+                )}
             </div>
             <CardTitle>{settings?.schoolName || "Sistem Kredit Poin Siswa"}</CardTitle>
             <CardDescription>Silakan login untuk melanjutkan</CardDescription>

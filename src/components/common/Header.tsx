@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { BookUser, GanttChartSquare, LogOut, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSettings } from '@/lib/data';
-import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { AppSettings } from '@/lib/types';
 
 type HeaderProps = {
@@ -36,13 +35,14 @@ export function Header({ onManageStudents, onManageCategories, onManageUsers, on
     <header className="bg-card border-b sticky top-0 z-10 p-4">
       <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
-            <div className="bg-primary p-2 rounded-lg">
-                <Avatar className="h-8 w-8">
-                    {settings?.schoolLogoUrl && <AvatarImage src={settings.schoolLogoUrl} alt={settings.schoolName} />}
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold">
+            <div className="bg-primary/10 p-1 rounded-md h-10 w-10 flex items-center justify-center">
+                 {settings?.schoolLogoUrl ? (
+                    <img src={settings.schoolLogoUrl} alt={settings.schoolName} className="h-full w-full object-contain"/>
+                ) : (
+                    <span className="text-primary font-bold">
                         {settings?.schoolName.charAt(0)}
-                    </AvatarFallback>
-                </Avatar>
+                    </span>
+                )}
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-primary">{settings?.schoolName || "Sistem Kredit Poin"}</h1>
         </div>
