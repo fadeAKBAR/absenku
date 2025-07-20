@@ -28,7 +28,9 @@ export interface Attendance {
     id: string;
     studentId: string;
     date: string; // YYYY-MM-DD
-    status: 'present' | 'absent' | 'sick' | 'permit' | 'late';
+    checkIn: string | null; // ISO string
+    checkOut: string | null; // ISO string
+    status: 'present' | 'absent' | 'sick' | 'permit' | 'late' | 'no_checkout';
     createdAt: number;
 }
 

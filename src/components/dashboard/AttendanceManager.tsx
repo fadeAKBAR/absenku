@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Check, X, Hand, FlaskConical, Save, Clock } from 'lucide-react';
+import { Check, X, Hand, FlaskConical, Save, Clock, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Attendance } from '@/lib/types';
 import { saveAttendance } from '@/lib/data';
@@ -29,7 +29,7 @@ type AttendanceManagerProps = {
   onUpdate: () => void;
 };
 
-type Status = 'present' | 'absent' | 'sick' | 'permit' | 'late';
+type Status = 'present' | 'absent' | 'sick' | 'permit' | 'late' | 'no_checkout';
 
 const statusIcons = {
     present: <Check className="h-4 w-4" />,
@@ -37,6 +37,7 @@ const statusIcons = {
     absent: <X className="h-4 w-4" />,
     sick: <FlaskConical className="h-4 w-4" />,
     permit: <Hand className="h-4 w-4" />,
+    no_checkout: <AlertTriangle className="h-4 w-4" />
 }
 
 export function AttendanceManager({ isOpen, onOpenChange, students, attendance, onUpdate }: AttendanceManagerProps) {
@@ -50,7 +51,8 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
       const todayAttendance = attendance.filter(a => a.date === todayString);
       const initialRecords = students.reduce((acc, student) => {
         const record = todayAttendance.find(a => a.studentId === student.id);
-        acc[student.id] = record ? record.status : 'present';
+        // Default to absent if no record, so teacher has to take action
+        acc[student.id] = record ? record.status : 'absent';
         return acc;
       }, {} as { [studentId: string]: Status });
       setAttendanceRecords(initialRecords);
@@ -90,11 +92,10 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Kelola Presensi Hari Ini ({format(new Date(), 'PPP')})</DialogTitle>
-          <DialogDescription>Tandai kehadiran setiap siswa untuk hari ini.</DialogDescription>
+          <DialogDescription>Tandai kehadiran setiap siswa untuk hari ini. Status Hadir/Terlambat diatur oleh siswa saat check-in.</DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-2 my-4">
-            <Button variant="outline" size="sm" onClick={() => markAll('present')}>Tandai Semua Hadir</Button>
             <Button variant="outline" size="sm" onClick={() => markAll('absent')}>Tandai Semua Alpa</Button>
         </div>
 
@@ -110,7 +111,7 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
                     <span>{student.name}</span>
                 </div>
                 
-                <ToggleGroup type="single" value={attendanceRecords[student.id] || 'present'} onValueChange={(value: Status) => handleStatusChange(student.id, value)}>
+                <ToggleGroup type="single" value={attendanceRecords[student.id] || 'absent'} onValueChange={(value: Status) => handleStatusChange(student.id, value)}>
                     <ToggleGroupItem value="present" aria-label="Hadir" className="data-[state=on]:bg-green-500 data-[state=on]:text-white">
                         {statusIcons.present}
                     </ToggleGroupItem>
@@ -125,6 +126,9 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
                     </ToggleGroupItem>
                      <ToggleGroupItem value="absent" aria-label="Alpa" className="data-[state=on]:bg-red-500 data-[state=on]:text-white">
                         {statusIcons.absent}
+                    </ToggleGroupItem>
+                     <ToggleGroupItem value="no_checkout" aria-label="Tidak Check Out" className="data-[state=on]:bg-gray-500 data-[state=on]:text-white">
+                        {statusIcons.no_checkout}
                     </ToggleGroupItem>
                 </ToggleGroup>
 

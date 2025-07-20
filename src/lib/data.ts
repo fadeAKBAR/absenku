@@ -1,5 +1,7 @@
 
+
 import type { Student, Category, Rating, User, Attendance } from './types';
+import { format } from 'date-fns';
 
 // --- In-memory data store for prototype ---
 // In a real app, this would be a database.
@@ -189,39 +191,78 @@ export const saveRating = async (ratingData: Omit<Rating, 'id' | 'createdAt'>): 
 // --- Attendance Management ---
 export const getAttendance = async (): Promise<Attendance[]> => {
   await simulateDelay(50);
+  // Logic to mark 'no_checkout' for past days
+  const todayString = format(new Date(), 'yyyy-MM-dd');
+  attendance.forEach(att => {
+      if (att.date < todayString && att.checkIn && !att.checkOut && att.status !== 'no_checkout' && att.status !== 'absent' && att.status !== 'sick' && att.status !== 'permit' ) {
+          att.status = 'no_checkout';
+      }
+  });
+  saveToLocalStorage('app_attendance', attendance);
   return [...attendance];
 }
 
 export const getAttendanceForStudent = async(studentId: string): Promise<Attendance[]> => {
   await simulateDelay(50);
+  // This logic should also be here to ensure student sees the most updated status
+  const todayString = format(new Date(), 'yyyy-MM-dd');
+  attendance.forEach(att => {
+      if (att.studentId === studentId && att.date < todayString && att.checkIn && !att.checkOut && att.status !== 'no_checkout' && att.status !== 'absent' && att.status !== 'sick' && att.status !== 'permit') {
+          att.status = 'no_checkout';
+      }
+  });
   return attendance.filter(a => a.studentId === studentId);
 }
 
-const saveAttendanceRecord = (studentId: string, date: string, status: Attendance['status']) => {
+const saveAttendanceRecord = (studentId: string, date: string, status: Attendance['status'], checkInTime: string | null = null, checkOutTime: string | null = null) => {
     const existingIndex = attendance.findIndex(a => a.studentId === studentId && a.date === date);
-    const newRecord: Attendance = {
-      id: `${studentId}-${date}`,
-      studentId,
-      date,
-      status,
-      createdAt: Date.now(),
-    };
+    
     if (existingIndex > -1) {
-      // Prevent student from overwriting a status set by a teacher (e.g., sick, permit)
-      // Only allow overwriting if it's currently 'absent' or if student is marking 'present'.
-      const currentStatus = attendance[existingIndex].status;
-      if (currentStatus === 'absent' || status === 'present') {
-        attendance[existingIndex] = newRecord;
-      }
+        const existingRecord = attendance[existingIndex];
+        // Teacher override
+        if (['sick', 'permit', 'absent'].includes(status)) {
+            existingRecord.status = status;
+            existingRecord.checkIn = null;
+            existingRecord.checkOut = null;
+        } else {
+            // Student action
+            if (checkInTime) existingRecord.checkIn = checkInTime;
+            if (checkOutTime) existingRecord.checkOut = checkOutTime;
+            existingRecord.status = status;
+        }
     } else {
+      const newRecord: Attendance = {
+        id: `${studentId}-${date}`,
+        studentId,
+        date,
+        checkIn: checkInTime,
+        checkOut: checkOutTime,
+        status,
+        createdAt: Date.now(),
+      };
       attendance.push(newRecord);
     }
 }
 
-export const saveAttendanceForStudent = async (studentId: string, date: string, status: 'present' | 'late'): Promise<void> => {
-  await simulateDelay(300);
-  saveAttendanceRecord(studentId, date, status);
-  saveToLocalStorage('app_attendance', attendance);
+export const checkInStudent = async (studentId: string, checkInTime: Date): Promise<void> => {
+    await simulateDelay(300);
+    const dateString = format(checkInTime, 'yyyy-MM-dd');
+    const lateTime = new Date(checkInTime);
+    lateTime.setHours(7, 0, 0, 0); // 7:00 AM
+
+    const status = checkInTime > lateTime ? 'late' : 'present';
+    saveAttendanceRecord(studentId, dateString, status, checkInTime.toISOString(), null);
+    saveToLocalStorage('app_attendance', attendance);
+}
+
+export const checkOutStudent = async (studentId: string, checkOutTime: Date): Promise<void> => {
+    await simulateDelay(300);
+    const dateString = format(checkOutTime, 'yyyy-MM-dd');
+    const existingRecord = attendance.find(a => a.studentId === studentId && a.date === dateString);
+    if (existingRecord) {
+        saveAttendanceRecord(studentId, dateString, existingRecord.status, existingRecord.checkIn, checkOutTime.toISOString());
+        saveToLocalStorage('app_attendance', attendance);
+    }
 }
 
 

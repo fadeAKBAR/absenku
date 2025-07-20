@@ -1,13 +1,14 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { LogOut, CheckCircle, Clock, CalendarDays, History } from 'lucide-react';
+import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getAttendanceForStudent, saveAttendanceForStudent } from '@/lib/data';
+import { getAttendanceForStudent, checkInStudent, checkOutStudent } from '@/lib/data';
 import type { Student, Attendance } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,9 +26,10 @@ import { ScrollArea } from '../ui/scroll-area';
 const statusMapping: { [key in Attendance['status']]: { text: string; color: string; icon: React.ReactNode } } = {
   present: { text: 'Hadir', color: 'text-green-600', icon: <CheckCircle className="h-5 w-5" /> },
   late: { text: 'Terlambat', color: 'text-orange-600', icon: <Clock className="h-5 w-5" /> },
-  sick: { text: 'Sakit', color: 'text-blue-600', icon: <Clock className="h-5 w-5" /> },
-  permit: { text: 'Izin', color: 'text-yellow-600', icon: <Clock className="h-5 w-5" /> },
-  absent: { text: 'Alpa', color: 'text-red-600', icon: <Clock className="h-5 w-5" /> },
+  sick: { text: 'Sakit', color: 'text-blue-600', icon: <Coffee className="h-5 w-5" /> },
+  permit: { text: 'Izin', color: 'text-yellow-600', icon: <CalendarDays className="h-5 w-5" /> },
+  absent: { text: 'Alpa', color: 'text-red-600', icon: <XCircle className="h-5 w-5" /> },
+  no_checkout: { text: 'Tidak Check Out', color: 'text-gray-600', icon: <AlertTriangle className="h-5 w-5" /> },
 };
 
 
@@ -36,10 +38,18 @@ export default function StudentDashboardClient() {
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [canCheckOut, setCanCheckOut] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   const todayString = format(new Date(), 'yyyy-MM-dd');
+
+  const checkCanCheckOut = () => {
+      const now = new Date();
+      const checkoutTime = new Date();
+      checkoutTime.setHours(15, 30, 0, 0); // 15:30
+      setCanCheckOut(now >= checkoutTime);
+  };
 
   const fetchData = useCallback(async (studentId: string) => {
     try {
@@ -69,6 +79,12 @@ export default function StudentDashboardClient() {
     } catch (e) {
       router.replace('/');
     }
+    
+    // Set interval to check if checkout is available
+    const interval = setInterval(checkCanCheckOut, 1000 * 60); // Check every minute
+    checkCanCheckOut();
+    return () => clearInterval(interval);
+
   }, [router, fetchData]);
 
   const handleLogout = () => {
@@ -76,25 +92,90 @@ export default function StudentDashboardClient() {
     router.push('/');
   };
 
-  const handlePresence = async () => {
+  const handleCheckIn = async () => {
     if (!student) return;
     setIsSubmitting(true);
     try {
-      await saveAttendanceForStudent(student.id, todayString, 'present');
-      toast({ title: "Sukses", description: "Kehadiran Anda berhasil dicatat." });
-      fetchData(student.id);
+        await checkInStudent(student.id, new Date());
+        toast({ title: "Sukses", description: "Check-in berhasil dicatat." });
+        fetchData(student.id);
     } catch (error) {
-      toast({ title: "Error", description: "Gagal mencatat kehadiran.", variant: "destructive" });
+        toast({ title: "Error", description: "Gagal melakukan check-in.", variant: "destructive" });
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
   };
+
+  const handleCheckOut = async () => {
+    if (!student) return;
+    setIsSubmitting(true);
+    try {
+        await checkOutStudent(student.id, new Date());
+        toast({ title: "Sukses", description: "Check-out berhasil dicatat. Sampai jumpa besok!" });
+        fetchData(student.id);
+    } catch (error) {
+        toast({ title: "Error", description: "Gagal melakukan check-out.", variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
 
   if (!student) {
     return <div className="flex items-center justify-center min-h-screen">Mengarahkan...</div>;
   }
   
-  const attendanceStatus = todayAttendance ? statusMapping[todayAttendance.status] : null;
+  const getGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Selamat Pagi';
+      if (hour < 15) return 'Selamat Siang';
+      if (hour < 18) return 'Selamat Sore';
+      return 'Selamat Malam';
+  }
+
+  const renderAttendanceCard = () => {
+    // Already checked in
+    if (todayAttendance && todayAttendance.checkIn) {
+      // Already checked out
+      if (todayAttendance.checkOut) {
+        return (
+           <div className={`flex flex-col items-center justify-center text-center p-8 rounded-lg bg-secondary text-green-600`}>
+             <div className="mb-4"><CheckCircle className="h-16 w-16" /></div>
+             <p className="text-2xl font-bold">Presensi Lengkap</p>
+             <p className="text-sm text-muted-foreground">Anda sudah check-out hari ini. Sampai jumpa besok!</p>
+          </div>
+        );
+      }
+      
+      // Not yet checked out
+      return (
+        <div className="flex flex-col items-center text-center gap-4">
+          <p className="text-muted-foreground">Anda sudah check-in. Silakan lakukan check-out saat pulang.</p>
+          <Button 
+            size="lg" 
+            className="w-full text-lg py-8 bg-blue-600 hover:bg-blue-700" 
+            onClick={handleCheckOut} 
+            disabled={isSubmitting || !canCheckOut}
+            >
+            <LogOut className="mr-4 h-8 w-8" />
+            {isSubmitting ? 'Memproses...' : 'Check Out'}
+          </Button>
+          {!canCheckOut && <p className="text-xs text-muted-foreground">Tombol Check Out akan aktif setelah pukul 15:30.</p>}
+        </div>
+      );
+    }
+
+    // Not checked in yet
+    return (
+      <div className="flex flex-col items-center text-center gap-4">
+        <p className="text-muted-foreground">Anda belum melakukan presensi hari ini. Silakan lakukan check-in.</p>
+        <Button size="lg" className="w-full text-lg py-8" onClick={handleCheckIn} disabled={isSubmitting}>
+          <LogIn className="mr-4 h-8 w-8" />
+          {isSubmitting ? 'Memproses...' : 'Check In'}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-secondary/50 min-h-screen">
@@ -106,7 +187,7 @@ export default function StudentDashboardClient() {
               <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-xl font-bold text-primary">{student.name}</h1>
+              <h1 className="text-xl font-bold text-primary">{getGreeting()}, {student.name}!</h1>
               <p className="text-sm text-muted-foreground">{student.email}</p>
             </div>
           </div>
@@ -128,21 +209,7 @@ export default function StudentDashboardClient() {
               <CardDescription>{format(new Date(), 'eeee, dd MMMM yyyy', { locale: id })}</CardDescription>
             </CardHeader>
             <CardContent>
-              {attendanceStatus ? (
-                <div className={`flex flex-col items-center justify-center text-center p-8 rounded-lg bg-secondary ${attendanceStatus.color}`}>
-                   <div className="mb-4">{React.cloneElement(attendanceStatus.icon, { className: "h-16 w-16"})}</div>
-                  <p className="text-2xl font-bold">{attendanceStatus.text}</p>
-                  <p className="text-sm text-muted-foreground">Kehadiran Anda telah dicatat oleh sistem.</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center text-center gap-4">
-                  <p className="text-muted-foreground">Anda belum melakukan presensi hari ini. Silakan konfirmasi kehadiran Anda.</p>
-                  <Button size="lg" className="w-full text-lg py-8" onClick={handlePresence} disabled={isSubmitting}>
-                    <CheckCircle className="mr-4 h-8 w-8" />
-                    {isSubmitting ? 'Memproses...' : 'Konfirmasi Kehadiran'}
-                  </Button>
-                </div>
-              )}
+              {renderAttendanceCard()}
             </CardContent>
           </Card>
         </div>
@@ -162,6 +229,8 @@ export default function StudentDashboardClient() {
                                 <TableRow>
                                     <TableHead>Tanggal</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead className="text-center">Check In</TableHead>
+                                    <TableHead className="text-center">Check Out</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -174,11 +243,17 @@ export default function StudentDashboardClient() {
                                                 <span className="font-medium">{statusMapping[att.status].text}</span>
                                             </div>
                                         </TableCell>
+                                        <TableCell className="text-center font-mono">
+                                            {att.checkIn ? format(new Date(att.checkIn), 'HH:mm') : '-'}
+                                        </TableCell>
+                                        <TableCell className="text-center font-mono">
+                                             {att.checkOut ? format(new Date(att.checkOut), 'HH:mm') : '-'}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                                 {attendance.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={2} className="text-center text-muted-foreground">
+                                        <TableCell colSpan={4} className="text-center text-muted-foreground">
                                             Belum ada riwayat presensi.
                                         </TableCell>
                                     </TableRow>

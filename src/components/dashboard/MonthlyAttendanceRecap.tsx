@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -46,6 +47,7 @@ type StudentMonthlyRecap = {
   sick: number;
   permit: number;
   absent: number;
+  noCheckout: number;
   totalDays: number;
 };
 
@@ -55,6 +57,7 @@ const chartConfig = {
     Sakit: { label: 'Sakit', color: 'hsl(221.2 83.2% 53.3%)' }, // blue-600
     Izin: { label: 'Izin', color: 'hsl(47.9 95.8% 53.1%)' }, // yellow-500
     Alpa: { label: 'Alpa', color: 'hsl(0 84.2% 60.2%)' }, // red-600
+    "Tdk Checkout": { label: 'Tdk Checkout', color: 'hsl(240 5.9% 10%)' }, // gray-900
 } satisfies ChartConfig;
 
 
@@ -82,6 +85,7 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
         sick: studentAttendance.filter(a => a.status === 'sick').length,
         permit: studentAttendance.filter(a => a.status === 'permit').length,
         absent: studentAttendance.filter(a => a.status === 'absent').length,
+        noCheckout: studentAttendance.filter(a => a.status === 'no_checkout').length,
         totalDays: monthDays.length,
       };
     });
@@ -90,7 +94,7 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
   }, [students, attendance, currentMonth]);
 
   const handleExport = () => {
-    const headers = ['Nama Siswa', 'Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alpa', 'Total Hari Efektif'];
+    const headers = ['Nama Siswa', 'Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alpa', 'Tidak Checkout', 'Total Hari Efektif'];
     const rows = monthlyRecap.map(item =>
       [
         `"${item.studentName}"`,
@@ -99,6 +103,7 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
         item.sick,
         item.permit,
         item.absent,
+        item.noCheckout,
         item.totalDays,
       ].join(',')
     );
@@ -119,7 +124,8 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
       Terlambat: s.late,
       Sakit: s.sick,
       Izin: s.permit,
-      Alpa: s.absent
+      Alpa: s.absent,
+      "Tdk Checkout": s.noCheckout,
   })).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
@@ -178,6 +184,7 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
                             <TableHead className="text-center">Sakit</TableHead>
                             <TableHead className="text-center">Izin</TableHead>
                             <TableHead className="text-center">Alpa</TableHead>
+                             <TableHead className="text-center">Tdk CO</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -189,6 +196,7 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
                             <TableCell className="text-center">{recap.sick}</TableCell>
                             <TableCell className="text-center">{recap.permit}</TableCell>
                             <TableCell className="text-center">{recap.absent}</TableCell>
+                            <TableCell className="text-center">{recap.noCheckout}</TableCell>
                             </TableRow>
                         ))}
                         </TableBody>
