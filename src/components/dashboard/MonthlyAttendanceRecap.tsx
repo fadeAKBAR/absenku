@@ -5,14 +5,13 @@ import React, { useMemo } from 'react';
 import { Download } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
-import type { Student, Attendance } from '@/lib/types';
+import type { Student, Attendance, ChartConfig } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -51,11 +50,11 @@ type StudentMonthlyRecap = {
 };
 
 const statusColors = {
-    present: 'hsl(var(--primary))', // green
-    late: 'hsl(var(--accent))', // orange
-    sick: 'hsl(8, 77%, 62%)',//'#3b82f6', // blue
-    permit: '#f59e0b', // amber
-    absent: 'hsl(var(--destructive))', // red
+    present: 'hsl(var(--chart-1))',
+    late: 'hsl(var(--chart-2))',
+    sick: 'hsl(var(--chart-3))',
+    permit: 'hsl(var(--chart-4))',
+    absent: 'hsl(var(--chart-5))',
 }
 
 const statusLabels: { [key in Attendance['status']]: string } = {
@@ -65,6 +64,15 @@ const statusLabels: { [key in Attendance['status']]: string } = {
     permit: 'Izin',
     absent: 'Alpa'
 }
+
+const chartConfig = {
+    Hadir: { label: 'Hadir', color: 'hsl(var(--chart-1))' },
+    Terlambat: { label: 'Terlambat', color: 'hsl(var(--chart-2))' },
+    Sakit: { label: 'Sakit', color: 'hsl(var(--chart-3))' },
+    Izin: { label: 'Izin', color: 'hsl(var(--chart-4))' },
+    Alpa: { label: 'Alpa', color: 'hsl(var(--chart-5))' },
+} satisfies ChartConfig;
+
 
 export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attendance }: MonthlyAttendanceRecapProps) {
   const currentMonth = new Date();
@@ -153,24 +161,26 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
             <div className="xl:col-span-2">
                 <h3 className="font-semibold mb-4 text-center">Grafik Kehadiran Siswa</h3>
                  <div className="h-96 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={chartData}
-                            layout="vertical"
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" />
-                            <YAxis dataKey="name" type="category" width={120} />
-                            <Tooltip content={<ChartTooltipContent />} />
-                            <Legend />
-                            <Bar dataKey="Hadir" stackId="a" fill={statusColors.present} />
-                            <Bar dataKey="Terlambat" stackId="a" fill={statusColors.late} />
-                            <Bar dataKey="Sakit" stackId="a" fill={statusColors.sick} />
-                            <Bar dataKey="Izin" stackId="a" fill={statusColors.permit} />
-                            <Bar dataKey="Alpa" stackId="a" fill={statusColors.absent} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                                data={chartData}
+                                layout="vertical"
+                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis type="number" />
+                                <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                                <Tooltip content={<ChartTooltipContent />} />
+                                <Legend />
+                                <Bar dataKey="Hadir" stackId="a" fill={statusColors.present} radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Terlambat" stackId="a" fill={statusColors.late} />
+                                <Bar dataKey="Sakit" stackId="a" fill={statusColors.sick} />
+                                <Bar dataKey="Izin" stackId="a" fill={statusColors.permit} />
+                                <Bar dataKey="Alpa" stackId="a" fill={statusColors.absent} radius={[0, 0, 4, 4]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </ChartContainer>
                 </div>
             </div>
 

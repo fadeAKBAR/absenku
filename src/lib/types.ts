@@ -1,4 +1,5 @@
 
+
 export interface Student {
   id: string;
   name: string;
@@ -47,4 +48,14 @@ export interface User {
     email: string;
     password?: string; // Should be handled securely in a real app
     createdAt: number;
+}
+
+export type ChartConfig = {
+  [k in string]: {
+    label?: React.ReactNode
+    icon?: React.ComponentType
+  } & (
+    | { color?: string; theme?: never }
+    | { color?: never; theme: Record<string, string> }
+  )
 }
