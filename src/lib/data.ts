@@ -43,10 +43,11 @@ const loadFromLocalStorage = <T>(key: string, defaultValue: T): T => {
     const item = window.localStorage.getItem(key);
     if (item) {
         const parsedItem = JSON.parse(item);
-        if (Array.isArray(defaultValue)) {
-            return parsedItem;
+        // Ensure that if the default is an array, the loaded value is also treated as one.
+        if (Array.isArray(defaultValue) && !Array.isArray(parsedItem)) {
+            return defaultValue;
         }
-        if (typeof defaultValue === 'object' && defaultValue !== null) {
+        if (typeof defaultValue === 'object' && defaultValue !== null && !Array.isArray(defaultValue)) {
           return { ...defaultValue, ...parsedItem };
         }
         return parsedItem;
@@ -57,6 +58,7 @@ const loadFromLocalStorage = <T>(key: string, defaultValue: T): T => {
     return defaultValue;
   }
 };
+
 
 const saveToLocalStorage = <T>(key: string, value: T) => {
    if (typeof window === 'undefined') return;
@@ -110,7 +112,7 @@ export const saveSettings = async (newSettings: AppSettings): Promise<AppSetting
 export const getUsers = async (): Promise<User[]> => {
   await simulateDelay(50);
   if (!users || !Array.isArray(users)) {
-    return [];
+    users = [];
   }
   return [...users].sort((a,b) => a.name.localeCompare(b.name));
 };
@@ -174,7 +176,7 @@ export const addStudent = async (data: Omit<Student, 'id' | 'createdAt'>): Promi
   return newStudent;
 };
 
-export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt' | 'email' | 'name'>>): Promise<Student> => {
+export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt'>>): Promise<Student> => {
     await simulateDelay(200);
     let studentToUpdate = students.find(s => s.id === id);
     if (!studentToUpdate) {
@@ -262,12 +264,12 @@ export const getRatings = async (): Promise<Rating[]> => {
     return [...ratings];
 };
 
-const calculateAttendanceRating = (date: string, studentId: string): number => {
+const calculateAttendanceRating = (date: string, studentId: string): number | null => {
     const studentAttendance = attendance.find(a => a.studentId === studentId && a.date === date);
 
     if (!studentAttendance || !studentAttendance.checkIn) {
-        // If absent or no check-in, 0 stars
-        return 0;
+        // Absent or no check-in yet, so no rating is applicable.
+        return null;
     }
 
     if (studentAttendance.status === 'present') {
@@ -291,34 +293,37 @@ const calculateAttendanceRating = (date: string, studentId: string): number => {
         return 5;
     }
 
-    return 0;
+    return 0; // Fallback, e.g. for 'no_checkout' status
 }
 
 export const saveRating = async (ratingData: Omit<Rating, 'id' | 'createdAt'>): Promise<Rating> => {
     await simulateDelay(300);
     
     const attendanceRating = calculateAttendanceRating(ratingData.date, ratingData.studentId);
+    const existingIndex = ratings.findIndex(r => r.studentId === ratingData.studentId && r.date === ratingData.date);
+
+    let finalRatings: { [categoryId: string]: number } = { ...ratingData.ratings };
+
+    if (existingIndex > -1) {
+        // If updating, merge with existing manual ratings
+        finalRatings = { ...ratings[existingIndex].ratings, ...ratingData.ratings };
+    }
     
-    const allRatings = {
-        ...ratingData.ratings,
-        [ATTENDANCE_CATEGORY_ID]: attendanceRating
-    };
+    if (attendanceRating !== null) {
+        finalRatings[ATTENDANCE_CATEGORY_ID] = attendanceRating;
+    }
     
-    const ratedValues = Object.values(allRatings).filter(r => r !== undefined && r !== null);
+    const ratedValues = Object.values(finalRatings).filter(r => r !== undefined && r !== null);
     const average = ratedValues.length > 0 ? ratedValues.reduce((acc, r) => acc + r, 0) / ratedValues.length : 0;
 
-    const finalRatingData = {
-        ...ratingData,
-        ratings: allRatings,
-        average: average,
+    const newRating: Rating = {
+      ...ratingData,
+      ratings: finalRatings,
+      average: average,
+      id: `${ratingData.studentId}-${ratingData.date}`,
+      createdAt: new Date(ratingData.date).getTime(),
     }
 
-    const existingIndex = ratings.findIndex(r => r.studentId === finalRatingData.studentId && r.date === finalRatingData.date);
-    const newRating: Rating = {
-      ...finalRatingData,
-      id: `${finalRatingData.studentId}-${finalRatingData.date}`,
-      createdAt: new Date(finalRatingData.date).getTime(),
-    }
     if (existingIndex > -1) {
         ratings[existingIndex] = newRating;
     } else {
@@ -392,8 +397,18 @@ export const checkInStudent = async (studentId: string, checkInTime: Date): Prom
     const lateTime = set(new Date(checkInTime), { hours: h, minutes: m, seconds: 0, milliseconds: 0 });
 
     const status = checkInTime > lateTime ? 'late' : 'present';
+
+    // 1. Save the attendance record first
     saveAttendanceRecord(studentId, dateString, status, { checkIn: checkInTime.toISOString() });
     saveToLocalStorage('app_attendance', attendance);
+
+    // 2. Automatically create/update a rating with just the attendance score
+    await saveRating({
+        studentId: studentId,
+        date: dateString,
+        ratings: {}, // No manual ratings yet
+        average: 0, // saveRating will calculate this
+    });
 }
 
 export const reportAbsence = async (studentId: string, status: 'sick' | 'permit', reason: string): Promise<void> => {

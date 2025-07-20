@@ -4,8 +4,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { format, set, differenceInMinutes } from 'date-fns';
 import { Calendar as CalendarIcon, Save } from 'lucide-react';
-import type { Student, Category, Attendance, AppSettings } from '@/lib/types';
-import { saveRating } from '@/lib/data';
+import type { Student, Category, Attendance, AppSettings, Rating } from '@/lib/types';
+import { getRatings, saveRating } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 
-const ATTENDANCE_CATEGORY_ID = "kehadiran-sistem";
 
 type RatingInputProps = {
   students: Student[];
@@ -27,11 +26,11 @@ type RatingInputProps = {
   onRatingSaved: () => void;
 };
 
-const calculateAttendanceRating = (date: string, studentId: string, attendanceData: Attendance[], appSettings: AppSettings): number => {
+const calculateAttendanceRating = (date: string, studentId: string, attendanceData: Attendance[], appSettings: AppSettings): number | null => {
     const studentAttendance = attendanceData.find(a => a.studentId === studentId && a.date === date);
 
     if (!studentAttendance || !studentAttendance.checkIn) {
-        return 0; // Absent or no check-in
+        return null;
     }
 
     if (studentAttendance.status === 'present') {
@@ -62,8 +61,9 @@ export function RatingInput({ students, categories, attendance, settings, onRati
   const [selectedStudent, setSelectedStudent] = useState<string>('');
   const [date, setDate] = useState<Date>(new Date());
   const [dailyRatings, setDailyRatings] = useState<{ [categoryId: string]: number }>({});
-  const [attendanceRating, setAttendanceRating] = useState(0);
+  const [attendanceRating, setAttendanceRating] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allRatings, setAllRatings] = useState<Rating[]>([]);
   const { toast } = useToast();
 
   const manualCategories = useMemo(() => categories.filter(c => !c.isSystem), [categories]);
@@ -73,11 +73,19 @@ export function RatingInput({ students, categories, attendance, settings, onRati
     const selectedDateString = format(date, 'yyyy-MM-dd');
     const presentStudentIds = new Set(
       attendance
-        .filter(a => a.date === selectedDateString && (a.status === 'present' || a.status === 'late' || a.status === 'sick' || a.status === 'permit'))
+        .filter(a => a.date === selectedDateString && (a.status !== 'absent'))
         .map(a => a.studentId)
     );
     return students.filter(s => presentStudentIds.has(s.id));
   }, [date, attendance, students]);
+  
+  useEffect(() => {
+      async function fetchRatings() {
+          const ratingsData = await getRatings();
+          setAllRatings(ratingsData);
+      }
+      fetchRatings();
+  }, []);
 
   useEffect(() => {
     // Reset student selection if they are not present on the newly selected date
@@ -87,21 +95,23 @@ export function RatingInput({ students, categories, attendance, settings, onRati
   }, [date, presentStudents, selectedStudent]);
 
   useEffect(() => {
-    // Reset ratings and calculate new attendance rating when student or date changes
+    const selectedDateString = format(date, 'yyyy-MM-dd');
+    const existingRating = allRatings.find(r => r.studentId === selectedStudent && r.date === selectedDateString);
+
     const initialRatings = manualCategories.reduce((acc, category) => {
-      acc[category.id] = 0;
+      acc[category.id] = existingRating?.ratings[category.id] || 0;
       return acc;
     }, {} as { [categoryId: string]: number });
     setDailyRatings(initialRatings);
     
     if (selectedStudent) {
-      const newAttendanceRating = calculateAttendanceRating(format(date, 'yyyy-MM-dd'), selectedStudent, attendance, settings);
+      const newAttendanceRating = calculateAttendanceRating(selectedDateString, selectedStudent, attendance, settings);
       setAttendanceRating(newAttendanceRating);
     } else {
-      setAttendanceRating(0);
+      setAttendanceRating(null);
     }
 
-  }, [selectedStudent, date, manualCategories, attendance, settings]);
+  }, [selectedStudent, date, manualCategories, attendance, settings, allRatings]);
 
   const handleRatingChange = (categoryId: string, rating: number) => {
     setDailyRatings(prev => ({ ...prev, [categoryId]: rating }));
@@ -109,11 +119,14 @@ export function RatingInput({ students, categories, attendance, settings, onRati
 
   const averageRating = useMemo(() => {
     const filledManualRatings = Object.values(dailyRatings).filter(r => r > 0);
-    const allRatings = [...filledManualRatings, attendanceRating];
+    const allRatingValues = [...filledManualRatings];
+    if (attendanceRating !== null) {
+        allRatingValues.push(attendanceRating);
+    }
     
-    if (allRatings.length === 0) return 0;
-    const sum = allRatings.reduce((acc, r) => acc + r, 0);
-    return sum / allRatings.length;
+    if (allRatingValues.length === 0) return 0;
+    const sum = allRatingValues.reduce((acc, r) => acc + r, 0);
+    return sum / allRatingValues.length;
   }, [dailyRatings, attendanceRating]);
 
   const handleSubmit = async () => {
@@ -122,7 +135,6 @@ export function RatingInput({ students, categories, attendance, settings, onRati
       return;
     }
     
-    // Filter only manual ratings that have been filled (rating > 0)
     const filledManualRatings = Object.entries(dailyRatings)
       .filter(([, rating]) => rating > 0)
       .reduce((acc, [id, rating]) => {
@@ -135,7 +147,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
       await saveRating({
         studentId: selectedStudent,
         date: format(date, 'yyyy-MM-dd'),
-        ratings: filledManualRatings, // Server will add attendance rating automatically
+        ratings: filledManualRatings,
         average: 0, // Server will calculate the final average
       });
       toast({ title: "Sukses", description: "Rating berhasil disimpan." });
@@ -180,7 +192,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
          <div className="grid gap-2">
           <Select onValueChange={setSelectedStudent} value={selectedStudent} disabled={presentStudents.length === 0}>
             <SelectTrigger>
-              <SelectValue placeholder={presentStudents.length > 0 ? "Pilih Siswa (Hadir/Terlambat/Izin)" : "Tidak ada siswa hadir/izin"} />
+              <SelectValue placeholder={presentStudents.length > 0 ? "Pilih Siswa (Hadir/Izin/Sakit)" : "Tidak ada siswa hadir/izin"} />
             </SelectTrigger>
             <SelectContent>
               {presentStudents.map(student => (
@@ -190,7 +202,7 @@ export function RatingInput({ students, categories, attendance, settings, onRati
           </Select>
         </div>
         <div className="space-y-4">
-             {attendanceCategory && selectedStudent && (
+             {attendanceCategory && selectedStudent && attendanceRating !== null && (
                  <div key={attendanceCategory.id} className="flex items-center justify-between">
                     <span className="text-sm font-medium flex items-center gap-2">
                         {attendanceCategory.name}
