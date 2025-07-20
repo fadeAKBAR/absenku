@@ -171,7 +171,7 @@ export function Recap({ students, categories, ratings, attendance, positions }: 
                                         <TableCell className="font-bold text-center">{index + 1}</TableCell>
                                         <TableCell className="font-medium flex items-center gap-3">
                                             <Avatar className="h-8 w-8">
-                                                <AvatarImage src={data.photoUrl} alt={data.studentName} />
+                                                <AvatarImage src={data.photoUrl || undefined} alt={data.studentName} />
                                                 <AvatarFallback>{getStudentInitials(data.studentName)}</AvatarFallback>
                                             </Avatar>
                                             {data.studentName}

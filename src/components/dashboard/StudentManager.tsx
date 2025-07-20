@@ -175,7 +175,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
               <div className="space-y-4">
                 <div className="flex flex-col items-center gap-4">
                     <Avatar className="h-24 w-24">
-                    <AvatarImage src={photoUrl} />
+                    <AvatarImage src={photoUrl || undefined} />
                     <AvatarFallback>
                         <UserIcon className="h-12 w-12" />
                     </AvatarFallback>
@@ -211,7 +211,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="flex items-center gap-2"><Award className="h-4 w-4"/> Jabatan</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || NO_POSITION_VALUE} defaultValue={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih jabatan" />
@@ -320,7 +320,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                 <div key={student.id} className="flex items-center justify-between p-2 bg-secondary rounded-md">
                    <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={student.photoUrl} alt={student.name} />
+                        <AvatarImage src={student.photoUrl || undefined} alt={student.name} />
                         <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="text-sm">

@@ -58,8 +58,6 @@ export default function StudentDashboardClient() {
 
   const todayString = format(new Date(), 'yyyy-MM-dd');
 
-  // --- START OF HOOKS ---
-
   const checkCanCheckOut = useCallback(() => {
     if (!settings) return;
     const now = new Date();
@@ -316,7 +314,7 @@ export default function StudentDashboardClient() {
                  <><LogOut className="mr-4 h-8 w-8" /> Check Out</>
             )}
           </Button>
-          {!canCheckOut && <p className="text-xs text-muted-foreground">Tombol Check Out akan aktif setelah pukul {settings.checkOutTime}.</p>}
+          {!canCheckOut && settings && <p className="text-xs text-muted-foreground">Tombol Check Out akan aktif setelah pukul {settings.checkOutTime}.</p>}
         </div>
       );
     }
@@ -389,7 +387,7 @@ export default function StudentDashboardClient() {
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarImage src={student.photoUrl} alt={student.name} />
+              <AvatarImage src={student.photoUrl || undefined} alt={student.name} />
               <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
             </Avatar>
             <div>
@@ -455,7 +453,7 @@ export default function StudentDashboardClient() {
                             <div className="flex items-center gap-3">
                                 <span className={`font-bold text-lg ${index < 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'} w-8 h-8 flex items-center justify-center rounded-full`}>{index + 1}</span>
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src={s.photoUrl} alt={s.studentName} />
+                                    <AvatarImage src={s.photoUrl || undefined} alt={s.studentName} />
                                     <AvatarFallback>{getStudentInitials(s.studentName)}</AvatarFallback>
                                 </Avatar>
                                 <span className="font-medium text-sm">{s.studentName}</span>

@@ -110,7 +110,7 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
               <div key={student.id} className="flex items-center justify-between p-2 bg-secondary rounded-md">
                 <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                    <AvatarImage src={student.photoUrl} alt={student.name} />
+                    <AvatarImage src={student.photoUrl || undefined} alt={student.name} />
                     <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <span>{student.name}</span>

@@ -50,7 +50,7 @@ export function StudentList({ students, positions }: StudentListProps) {
               <TableCell className="font-medium">
                 <div className="flex items-center gap-3">
                     <Avatar>
-                        <AvatarImage src={student.photoUrl} alt={student.name} />
+                        <AvatarImage src={student.photoUrl || undefined} alt={student.name} />
                         <AvatarFallback>{getStudentInitials(student.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
