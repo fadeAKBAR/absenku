@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Check, X, Hand, FlaskConical, Save } from 'lucide-react';
+import { Check, X, Hand, FlaskConical, Save, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Attendance } from '@/lib/types';
 import { saveAttendance } from '@/lib/data';
@@ -29,10 +29,11 @@ type AttendanceManagerProps = {
   onUpdate: () => void;
 };
 
-type Status = 'present' | 'absent' | 'sick' | 'permit';
+type Status = 'present' | 'absent' | 'sick' | 'permit' | 'late';
 
 const statusIcons = {
     present: <Check className="h-4 w-4" />,
+    late: <Clock className="h-4 w-4" />,
     absent: <X className="h-4 w-4" />,
     sick: <FlaskConical className="h-4 w-4" />,
     permit: <Hand className="h-4 w-4" />,
@@ -86,7 +87,7 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Kelola Presensi Hari Ini ({format(new Date(), 'PPP')})</DialogTitle>
           <DialogDescription>Tandai kehadiran setiap siswa untuk hari ini.</DialogDescription>
@@ -112,6 +113,9 @@ export function AttendanceManager({ isOpen, onOpenChange, students, attendance, 
                 <ToggleGroup type="single" value={attendanceRecords[student.id] || 'present'} onValueChange={(value: Status) => handleStatusChange(student.id, value)}>
                     <ToggleGroupItem value="present" aria-label="Hadir" className="data-[state=on]:bg-green-500 data-[state=on]:text-white">
                         {statusIcons.present}
+                    </ToggleGroupItem>
+                     <ToggleGroupItem value="late" aria-label="Terlambat" className="data-[state=on]:bg-orange-500 data-[state=on]:text-white">
+                        {statusIcons.late}
                     </ToggleGroupItem>
                     <ToggleGroupItem value="permit" aria-label="Izin" className="data-[state=on]:bg-yellow-500 data-[state=on]:text-white">
                         {statusIcons.permit}

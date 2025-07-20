@@ -89,7 +89,7 @@ export function Recap({ students, categories, ratings, attendance }: RecapProps)
         : 0;
         
       const totalPossibleDays = studentAttendance.length;
-      const daysPresent = studentAttendance.filter(a => a.status === 'present').length;
+      const daysPresent = studentAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
       const attendancePercentage = totalPossibleDays > 0 ? (daysPresent / totalPossibleDays) * 100 : 0;
 
       const categoryAverages: { [categoryId: string]: { name: string; total: number; count: number; average: number } } = {};

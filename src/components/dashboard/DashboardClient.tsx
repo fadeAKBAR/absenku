@@ -14,7 +14,8 @@ import { UserManager } from '@/components/dashboard/UserManager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { AttendanceManager } from './AttendanceManager';
-import { CalendarCheck } from 'lucide-react';
+import { MonthlyAttendanceRecap } from './MonthlyAttendanceRecap';
+import { CalendarCheck, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function DashboardClient() {
@@ -81,6 +82,7 @@ export default function DashboardClient() {
   const [isCategoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [isUserManagerOpen, setUserManagerOpen] = useState(false);
   const [isAttendanceManagerOpen, setAttendanceManagerOpen] = useState(false);
+  const [isMonthlyRecapOpen, setMonthlyRecapOpen] = useState(false);
 
   const handleDataUpdate = async () => {
     await fetchData();
@@ -126,10 +128,16 @@ export default function DashboardClient() {
       <main className="flex-1 p-4 md:p-8 container mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
           <div className="lg:col-span-1 xl:col-span-1 flex flex-col gap-8">
-            <Button size="lg" onClick={() => setAttendanceManagerOpen(true)}>
-              <CalendarCheck className="mr-2 h-5 w-5" />
-              Kelola Presensi Hari Ini
-            </Button>
+             <div className="grid grid-cols-2 gap-2">
+                <Button size="lg" onClick={() => setAttendanceManagerOpen(true)}>
+                  <CalendarCheck className="mr-2 h-5 w-5" />
+                  Presensi
+                </Button>
+                <Button size="lg" variant="secondary" onClick={() => setMonthlyRecapOpen(true)}>
+                  <ClipboardCheck className="mr-2 h-5 w-5" />
+                  Rekap Bulanan
+                </Button>
+            </div>
             <RatingInput
               students={students}
               categories={categories}
@@ -172,6 +180,12 @@ export default function DashboardClient() {
         students={students}
         attendance={attendance}
         onUpdate={handleDataUpdate}
+      />
+       <MonthlyAttendanceRecap
+        isOpen={isMonthlyRecapOpen}
+        onOpenChange={setMonthlyRecapOpen}
+        students={students}
+        attendance={attendance}
       />
     </div>
   );

@@ -182,7 +182,7 @@ export const getAttendance = async (): Promise<Attendance[]> => {
   return [...attendance];
 }
 
-export const saveAttendance = async (date: string, records: { [studentId: string]: 'present' | 'absent' | 'sick' | 'permit' }): Promise<void> => {
+export const saveAttendance = async (date: string, records: { [studentId: string]: 'present' | 'absent' | 'sick' | 'permit' | 'late' }): Promise<void> => {
   await simulateDelay(300);
   Object.entries(records).forEach(([studentId, status]) => {
     const existingIndex = attendance.findIndex(a => a.studentId === studentId && a.date === date);

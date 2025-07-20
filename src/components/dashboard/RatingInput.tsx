@@ -34,7 +34,7 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
     const todayString = format(date, 'yyyy-MM-dd');
     const presentStudentIds = new Set(
       attendance
-        .filter(a => a.date === todayString && a.status === 'present')
+        .filter(a => a.date === todayString && (a.status === 'present' || a.status === 'late'))
         .map(a => a.studentId)
     );
     return students.filter(s => presentStudentIds.has(s.id));
@@ -127,7 +127,7 @@ export function RatingInput({ students, categories, attendance, onRatingSaved }:
          <div className="grid gap-2">
           <Select onValueChange={setSelectedStudent} value={selectedStudent} disabled={presentStudents.length === 0}>
             <SelectTrigger>
-              <SelectValue placeholder={presentStudents.length > 0 ? "Pilih Siswa (Hadir)" : "Tidak ada siswa hadir"} />
+              <SelectValue placeholder={presentStudents.length > 0 ? "Pilih Siswa (Hadir/Terlambat)" : "Tidak ada siswa hadir"} />
             </SelectTrigger>
             <SelectContent>
               {presentStudents.map(student => (
