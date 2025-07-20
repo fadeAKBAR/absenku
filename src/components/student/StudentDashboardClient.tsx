@@ -6,9 +6,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee } from 'lucide-react';
+import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getAttendanceForStudent, checkInStudent, checkOutStudent } from '@/lib/data';
+import { getAttendanceForStudent, checkInStudent, checkOutStudent, SCHOOL_LOCATION, MAX_DISTANCE_METERS } from '@/lib/data';
 import type { Student, Attendance } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '../ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 
 const statusMapping: { [key in Attendance['status']]: { text: string; color: string; icon: React.ReactNode } } = {
   present: { text: 'Hadir', color: 'text-green-600', icon: <CheckCircle className="h-5 w-5" /> },
@@ -38,6 +39,9 @@ export default function StudentDashboardClient() {
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingLocation, setIsCheckingLocation] = useState(false);
+  const [showLocationError, setShowLocationError] = useState(false);
+  const [locationErrorMessage, setLocationErrorMessage] = useState('');
   const [canCheckOut, setCanCheckOut] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -92,18 +96,66 @@ export default function StudentDashboardClient() {
     router.push('/');
   };
 
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // in metres
+  }
+  
+  const handleLocationError = (message: string) => {
+    setLocationErrorMessage(message);
+    setShowLocationError(true);
+    setIsCheckingLocation(false);
+  }
+
   const handleCheckIn = async () => {
     if (!student) return;
-    setIsSubmitting(true);
-    try {
-        await checkInStudent(student.id, new Date());
-        toast({ title: "Sukses", description: "Check-in berhasil dicatat." });
-        fetchData(student.id);
-    } catch (error) {
-        toast({ title: "Error", description: "Gagal melakukan check-in.", variant: "destructive" });
-    } finally {
-        setIsSubmitting(false);
+    setIsCheckingLocation(true);
+
+    if (!navigator.geolocation) {
+       handleLocationError("Browser Anda tidak mendukung geolokasi.");
+       return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const distance = calculateDistance(latitude, longitude, SCHOOL_LOCATION.latitude, SCHOOL_LOCATION.longitude);
+
+        if (distance > MAX_DISTANCE_METERS) {
+           handleLocationError(`Anda berada terlalu jauh dari sekolah (${Math.round(distance)} meter). Check-in hanya bisa dilakukan dalam radius ${MAX_DISTANCE_METERS} meter.`);
+           return;
+        }
+
+        // Location is valid, proceed with check-in
+        setIsSubmitting(true);
+        setIsCheckingLocation(false);
+        try {
+            await checkInStudent(student.id, new Date());
+            toast({ title: "Sukses", description: "Check-in berhasil dicatat." });
+            fetchData(student.id);
+        } catch (error) {
+            toast({ title: "Error", description: "Gagal melakukan check-in.", variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+        }
+      },
+      (error) => {
+        let message = "Terjadi kesalahan saat mengakses lokasi Anda.";
+        if (error.code === 1) message = "Izin lokasi ditolak. Silakan izinkan akses lokasi di pengaturan browser Anda untuk melakukan check-in.";
+        if (error.code === 2) message = "Lokasi tidak tersedia. Pastikan GPS Anda aktif.";
+        handleLocationError(message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   const handleCheckOut = async () => {
@@ -157,8 +209,11 @@ export default function StudentDashboardClient() {
             onClick={handleCheckOut} 
             disabled={isSubmitting || !canCheckOut}
             >
-            <LogOut className="mr-4 h-8 w-8" />
-            {isSubmitting ? 'Memproses...' : 'Check Out'}
+            {isSubmitting ? (
+                 <><Loader2 className="mr-4 h-8 w-8 animate-spin" /> Memproses...</>
+            ) : (
+                 <><LogOut className="mr-4 h-8 w-8" /> Check Out</>
+            )}
           </Button>
           {!canCheckOut && <p className="text-xs text-muted-foreground">Tombol Check Out akan aktif setelah pukul 15:30.</p>}
         </div>
@@ -169,15 +224,34 @@ export default function StudentDashboardClient() {
     return (
       <div className="flex flex-col items-center text-center gap-4">
         <p className="text-muted-foreground">Anda belum melakukan presensi hari ini. Silakan lakukan check-in.</p>
-        <Button size="lg" className="w-full text-lg py-8" onClick={handleCheckIn} disabled={isSubmitting}>
-          <LogIn className="mr-4 h-8 w-8" />
-          {isSubmitting ? 'Memproses...' : 'Check In'}
+        <Button size="lg" className="w-full text-lg py-8" onClick={handleCheckIn} disabled={isSubmitting || isCheckingLocation}>
+           {isCheckingLocation ? (
+                 <><Loader2 className="mr-4 h-8 w-8 animate-spin" /> Memeriksa Lokasi...</>
+           ) : isSubmitting ? (
+                 <><Loader2 className="mr-4 h-8 w-8 animate-spin" /> Memproses...</>
+           ) : (
+                 <><LogIn className="mr-4 h-8 w-8" /> Check In</>
+           )}
         </Button>
       </div>
     );
   }
 
   return (
+    <>
+    <AlertDialog open={showLocationError} onOpenChange={setShowLocationError}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2"><MapPin className="h-6 w-6 text-destructive"/> Error Lokasi</AlertDialogTitle>
+            <AlertDialogDescription>
+                {locationErrorMessage}
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowLocationError(false)}>Mengerti</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
     <div className="bg-secondary/50 min-h-screen">
       <header className="bg-card border-b sticky top-0 z-10 p-4">
         <div className="container mx-auto flex items-center justify-between">
@@ -266,5 +340,6 @@ export default function StudentDashboardClient() {
         </div>
       </main>
     </div>
+    </>
   );
 }
