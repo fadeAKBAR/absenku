@@ -61,6 +61,7 @@ export interface RecapData {
   studentId: string;
   studentName: string;
   photoUrl?: string;
+  parentPhone?: string;
   overallAverage: number;
   totalPoints: number; // New field for accumulated points
   categoryAverages: { [categoryId: string]: { name: string; average: number } };

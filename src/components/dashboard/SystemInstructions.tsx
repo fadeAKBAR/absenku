@@ -1,7 +1,7 @@
 
 "use client"
 
-import { BookCheck, Info, Star, Users, Workflow, AlertTriangle, SmartphoneNfc } from 'lucide-react';
+import { BookCheck, Info, Star, Users, Workflow, AlertTriangle, SmartphoneNfc, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Accordion,
@@ -52,6 +52,23 @@ export function SystemInstructions() {
                 <li><strong>1 Bintang:</strong> Terlambat lebih dari 30 menit.</li>
                 <li><strong>0 Bintang (Alpa):</strong> Siswa tidak melakukan check-in pada hari tersebut.</li>
                  <li><strong>5 Bintang (Izin/Sakit):</strong> Siswa yang melapor izin atau sakit dianggap hadir.</li>
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-5">
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                <span className="font-semibold">Notifikasi WhatsApp Manual</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="text-muted-foreground space-y-2 pl-2">
+              <p>Anda dapat mengirim pemberitahuan ke orang tua siswa secara manual melalui WhatsApp.</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Pastikan nomor HP orang tua siswa sudah terdaftar dan benar.</li>
+                <li>Pada tabel peringkat, klik ikon pesan (<MessageSquare className="inline h-4 w-4"/>) di baris siswa yang bersangkutan.</li>
+                <li>Sebuah tab baru akan terbuka dengan WhatsApp Web/Desktop, berisi pesan yang sudah disiapkan.</li>
+                <li>Anda hanya perlu menekan tombol kirim. Pesan akan disesuaikan jika siswa hadir atau alpa pada hari itu.</li>
               </ul>
             </AccordionContent>
           </AccordionItem>

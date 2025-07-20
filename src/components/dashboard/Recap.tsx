@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Download, BarChart2 } from 'lucide-react';
+import { Download, BarChart2, MessageSquare } from 'lucide-react';
 import { startOfWeek, startOfMonth, format } from 'date-fns';
 import type { Student, Category, Rating, RecapData, Attendance, Position, PointRecord } from '@/lib/types';
 import { exportToCsv } from '@/lib/utils';
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { StudentList } from './StudentList';
+import { useToast } from '@/hooks/use-toast';
 
 type RecapProps = {
   students: Student[];
@@ -35,6 +36,7 @@ const getStudentInitials = (name: string) => {
 
 export function Recap({ students, categories, ratings, attendance, positions, pointRecords }: RecapProps) {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'all-time'>('weekly');
+  const { toast } = useToast();
 
   const { filteredRatings, filteredAttendance, filteredPointRecords } = useMemo(() => {
     const now = new Date();
@@ -109,6 +111,7 @@ export function Recap({ students, categories, ratings, attendance, positions, po
         studentId: student.id,
         studentName: student.name,
         photoUrl: student.photoUrl,
+        parentPhone: student.parentPhone,
         overallAverage,
         totalPoints,
         categoryAverages,
@@ -122,6 +125,41 @@ export function Recap({ students, categories, ratings, attendance, positions, po
   
   const handleExport = () => {
     exportToCsv(recapData, categories, period);
+  };
+
+  const handleSendWhatsAppNotification = (student: RecapData) => {
+    if (!student.parentPhone) {
+      toast({
+        title: "Nomor Tidak Ditemukan",
+        description: `Nomor HP orang tua untuk siswa ${student.studentName} belum terdaftar.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Format number to international format (e.g., 62 for Indonesia)
+    let phoneNumber = student.parentPhone.replace(/\D/g, ''); // Remove non-digit characters
+    if (phoneNumber.startsWith('0')) {
+      phoneNumber = '62' + phoneNumber.substring(1);
+    } else if (!phoneNumber.startsWith('62')) {
+      phoneNumber = '62' + phoneNumber;
+    }
+
+    const todayString = format(new Date(), 'yyyy-MM-dd');
+    const todayAttendance = attendance.find(a => a.studentId === student.studentId && a.date === todayString);
+
+    let message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan rekap poin mingguan ananda:\n\nRata-rata Rating: *${student.overallAverage.toFixed(2)}*\nTotal Poin Tambahan: *${student.totalPoints}*\n\nTerima kasih.`;
+
+    if (todayAttendance?.status === 'absent') {
+       message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan bahwa ananda tercatat *ALPA* pada hari ini, ${format(new Date(), 'dd MMMM yyyy')}. Mohon konfirmasinya. Terima kasih.`;
+    } else if (todayAttendance) {
+       message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan ananda telah *HADIR* di sekolah hari ini, ${format(new Date(), 'dd MMMM yyyy')}. Terima kasih.`;
+    }
+    
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
@@ -167,6 +205,7 @@ export function Recap({ students, categories, ratings, attendance, positions, po
                                         <TableHead className="text-center">Poin +/-</TableHead>
                                         <TableHead className="text-center">Rata-rata</TableHead>
                                         <TableHead className="text-center">Kehadiran</TableHead>
+                                        <TableHead className="text-center">Notifikasi</TableHead>
                                         {categories.map(cat => (
                                           <TableHead key={cat.id} className="text-center hidden md:table-cell">{cat.name}</TableHead>
                                         ))}
@@ -215,6 +254,11 @@ export function Recap({ students, categories, ratings, attendance, positions, po
                                         </TableCell>
                                         <TableCell className="font-bold text-center text-primary">{data.overallAverage.toFixed(2)}</TableCell>
                                         <TableCell className="text-center">{data.attendancePercentage.toFixed(0)}%</TableCell>
+                                        <TableCell className="text-center">
+                                           <Button variant="outline" size="icon" onClick={() => handleSendWhatsAppNotification(data)} disabled={!data.parentPhone}>
+                                              <MessageSquare className="h-4 w-4" />
+                                          </Button>
+                                        </TableCell>
                                         {categories.map(cat => (
                                           <TableCell key={cat.id} className="text-center hidden md:table-cell">
                                               {data.categoryAverages[cat.id]?.average.toFixed(2) ?? 'N/A'}
