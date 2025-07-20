@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { Download, BarChart2 } from 'lucide-react';
 import { startOfWeek, startOfMonth, format } from 'date-fns';
-import type { Student, Category, Rating, RecapData, Attendance, Position } from '@/lib/types';
+import type { Student, Category, Rating, RecapData, Attendance, Position, PointRecord } from '@/lib/types';
 import { exportToCsv } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,7 @@ type RecapProps = {
   ratings: Rating[];
   attendance: Attendance[];
   positions: Position[];
+  pointRecords: PointRecord[];
 };
 
 const getStudentInitials = (name: string) => {
@@ -32,10 +33,10 @@ const getStudentInitials = (name: string) => {
     return name.substring(0, 2).toUpperCase();
 };
 
-export function Recap({ students, categories, ratings, attendance, positions }: RecapProps) {
+export function Recap({ students, categories, ratings, attendance, positions, pointRecords }: RecapProps) {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'all-time'>('weekly');
 
-  const { filteredRatings, filteredAttendance } = useMemo(() => {
+  const { filteredRatings, filteredAttendance, filteredPointRecords } = useMemo(() => {
     const now = new Date();
     let startDate: Date;
 
@@ -48,25 +49,29 @@ export function Recap({ students, categories, ratings, attendance, positions }: 
         break;
       case 'all-time':
       default:
-        return { filteredRatings: ratings, filteredAttendance: attendance };
+        return { filteredRatings: ratings, filteredAttendance: attendance, filteredPointRecords: pointRecords };
     }
     const startDateString = format(startDate, 'yyyy-MM-dd');
     return {
         filteredRatings: ratings.filter(r => r.date >= startDateString),
-        filteredAttendance: attendance.filter(a => a.date >= startDateString)
+        filteredAttendance: attendance.filter(a => a.date >= startDateString),
+        filteredPointRecords: pointRecords.filter(p => p.date >= startDateString),
     };
-  }, [period, ratings, attendance]);
+  }, [period, ratings, attendance, pointRecords]);
 
   const recapData = useMemo(() => {
     return students.map(student => {
       const studentRatings = filteredRatings.filter(r => r.studentId === student.id);
       const studentAttendance = filteredAttendance.filter(a => a.studentId === student.id);
+      const studentPointRecords = filteredPointRecords.filter(p => p.studentId === student.id);
       
       const totalRatings = studentRatings.length;
       
       const overallAverage = totalRatings > 0 
         ? studentRatings.reduce((sum, r) => sum + r.average, 0) / totalRatings 
         : 0;
+
+      const totalPoints = studentPointRecords.reduce((sum, record) => sum + record.points, 0);
         
       const totalPossibleDays = studentAttendance.length;
       const daysPresent = studentAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
@@ -105,6 +110,7 @@ export function Recap({ students, categories, ratings, attendance, positions }: 
         studentName: student.name,
         photoUrl: student.photoUrl,
         overallAverage,
+        totalPoints,
         categoryAverages,
         totalRatings,
         attendancePercentage,
@@ -112,7 +118,7 @@ export function Recap({ students, categories, ratings, attendance, positions }: 
         dailyAverages
       };
     }).sort((a, b) => b.overallAverage - a.overallAverage);
-  }, [filteredRatings, filteredAttendance, students, categories]);
+  }, [filteredRatings, filteredAttendance, filteredPointRecords, students, categories]);
   
   const handleExport = () => {
     exportToCsv(recapData, categories, period);
@@ -150,7 +156,7 @@ export function Recap({ students, categories, ratings, attendance, positions }: 
               </TabsList>
               <TabsContent value={period}>
                 <div className="mt-4 space-y-8">
-                    {recapData.filter(s => s.totalRatings > 0).length > 0 ? (
+                    {recapData.filter(s => s.totalRatings > 0 || s.totalPoints !== 0).length > 0 ? (
                         <>
                             <Table>
                                 <TableHeader>
@@ -158,6 +164,7 @@ export function Recap({ students, categories, ratings, attendance, positions }: 
                                         <TableHead className="w-[50px]">Pkt.</TableHead>
                                         <TableHead className="w-[200px]">Siswa</TableHead>
                                         <TableHead className="text-center">Grafik</TableHead>
+                                        <TableHead className="text-center">Poin +/-</TableHead>
                                         <TableHead className="text-center">Rata-rata</TableHead>
                                         <TableHead className="text-center">Kehadiran</TableHead>
                                         {categories.map(cat => (
@@ -203,6 +210,9 @@ export function Recap({ students, categories, ratings, attendance, positions }: 
                                              </DialogContent>
                                            </Dialog>
                                          </TableCell>
+                                        <TableCell className={`text-center font-bold ${data.totalPoints > 0 ? 'text-green-600' : data.totalPoints < 0 ? 'text-red-600' : ''}`}>
+                                          {data.totalPoints}
+                                        </TableCell>
                                         <TableCell className="font-bold text-center text-primary">{data.overallAverage.toFixed(2)}</TableCell>
                                         <TableCell className="text-center">{data.attendancePercentage.toFixed(0)}%</TableCell>
                                         {categories.map(cat => (

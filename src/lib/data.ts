@@ -1,13 +1,13 @@
 
 
-import type { Student, Category, Rating, User, Attendance, AppSettings, RecapData, Position } from './types';
+import type { Student, Category, Rating, User, Attendance, AppSettings, RecapData, Position, PointRecord } from './types';
 import { format, set, startOfWeek, differenceInMinutes } from 'date-fns';
 
 // --- In-memory data store for prototype ---
 // In a real app, this would be a database.
 
 let users: User[] = [
-  { id: 'user1', name: 'Guru Contoh', email: 'guru@sekolah.id', password: 'password', createdAt: Date.now() }
+  { id: 'user1', name: 'Guru Contoh', email: 'guru@sekolah.id', password: 'password', role: 'teacher', createdAt: Date.now() }
 ];
 
 let students: Student[] = [];
@@ -19,6 +19,8 @@ let ratings: Rating[] = [];
 let attendance: Attendance[] = [];
 
 let positions: Position[] = [];
+
+let pointRecords: PointRecord[] = [];
 
 let settings: AppSettings = {
     schoolName: "SMKN 3 SOPPENG",
@@ -92,6 +94,7 @@ if (typeof window !== 'undefined') {
   ratings = loadFromLocalStorage('app_ratings', []);
   attendance = loadFromLocalStorage('app_attendance', []);
   positions = loadFromLocalStorage('app_positions', []);
+  pointRecords = loadFromLocalStorage('app_point_records', []);
   settings = loadFromLocalStorage('app_settings', settings);
   ensureAttendanceCategory();
 }
@@ -120,11 +123,12 @@ export const getUsers = async (): Promise<User[]> => {
   return [...users].sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const addUser = async (userData: Omit<User, 'id' | 'createdAt'>): Promise<User> => {
+export const addUser = async (userData: Omit<User, 'id' | 'createdAt' | 'role'>): Promise<User> => {
   await simulateDelay(200);
   const newUser: User = {
     ...userData,
     id: `user${Date.now()}`,
+    role: 'teacher',
     createdAt: Date.now(),
   };
   users.push(newUser);
@@ -132,7 +136,7 @@ export const addUser = async (userData: Omit<User, 'id' | 'createdAt'>): Promise
   return newUser;
 };
 
-export const updateUser = async (id: string, data: Partial<Omit<User, 'id'|'createdAt'>>): Promise<User> => {
+export const updateUser = async (id: string, data: Partial<Omit<User, 'id'|'createdAt'| 'role'>>): Promise<User> => {
     await simulateDelay(200);
     let userToUpdate = users.find(u => u.id === id);
     if (!userToUpdate) {
@@ -213,9 +217,11 @@ export const deleteStudent = async (id: string): Promise<void> => {
   students = students.filter(s => s.id !== id);
   ratings = ratings.filter(r => r.studentId !== id);
   attendance = attendance.filter(a => a.studentId !== id);
+  pointRecords = pointRecords.filter(p => p.studentId !== id);
   saveToLocalStorage('app_students', students);
   saveToLocalStorage('app_ratings', ratings);
   saveToLocalStorage('app_attendance', attendance);
+  saveToLocalStorage('app_point_records', pointRecords);
 };
 
 export const resetDevice = async (id: string): Promise<void> => {
@@ -352,7 +358,7 @@ const calculateAttendanceRating = (date: string, studentId: string): number | nu
     return 0; // Fallback, e.g. for 'no_checkout' status
 }
 
-export const saveRating = async (ratingData: Omit<Rating, 'id' | 'createdAt'>): Promise<Rating> => {
+export const saveRating = async (ratingData: Omit<Rating, 'id' | 'createdAt' | 'average'>): Promise<Rating> => {
     await simulateDelay(300);
     
     const attendanceRating = calculateAttendanceRating(ratingData.date, ratingData.studentId);
@@ -388,6 +394,34 @@ export const saveRating = async (ratingData: Omit<Rating, 'id' | 'createdAt'>): 
     saveToLocalStorage('app_ratings', ratings);
     return newRating;
 };
+
+// --- Point Record Management ---
+export const getPointRecords = async (): Promise<PointRecord[]> => {
+  await simulateDelay(50);
+  return [...pointRecords];
+}
+
+export const getPointRecordsForStudent = async (studentId: string): Promise<PointRecord[]> => {
+  await simulateDelay(50);
+  return pointRecords.filter(p => p.studentId === studentId);
+}
+
+export const addPointRecord = async (data: Omit<PointRecord, 'id' | 'createdAt'>): Promise<PointRecord> => {
+  await simulateDelay(200);
+  const newRecord: PointRecord = {
+    ...data,
+    id: `pr-${Date.now()}`,
+    createdAt: Date.now(),
+  };
+  pointRecords.push(newRecord);
+  saveToLocalStorage('app_point_records', pointRecords);
+
+  // Here we can add a trigger for notifications in the future.
+  // For now, just save the record.
+
+  return newRecord;
+}
+
 
 // --- Attendance Management ---
 export const getAttendance = async (): Promise<Attendance[]> => {
@@ -478,7 +512,6 @@ export const checkInStudent = async (studentId: string, checkInTime: Date, devic
         studentId: studentId,
         date: dateString,
         ratings: {}, // No manual ratings yet
-        average: 0, // saveRating will calculate this
     });
 }
 
@@ -521,7 +554,8 @@ export const getWeeklyLeaderboard = async(): Promise<RecapData[]> => {
     const startDateString = format(startDate, 'yyyy-MM-dd');
 
     const weeklyRatings = ratings.filter(r => r.date >= startDateString);
-    
+    const weeklyPoints = pointRecords.filter(p => p.date >= startDateString);
+
     const weeklyRecap = students.map(student => {
         const studentRatings = weeklyRatings.filter(r => r.studentId === student.id);
         const totalRatings = studentRatings.length;
@@ -529,11 +563,16 @@ export const getWeeklyLeaderboard = async(): Promise<RecapData[]> => {
           ? studentRatings.reduce((sum, r) => sum + r.average, 0) / totalRatings 
           : 0;
         
+        const totalPoints = weeklyPoints
+          .filter(p => p.studentId === student.id)
+          .reduce((sum, p) => sum + p.points, 0);
+        
         return {
           studentId: student.id,
           studentName: student.name,
           photoUrl: student.photoUrl,
           overallAverage,
+          totalPoints,
           totalRatings,
           // Add dummy values for other RecapData fields that aren't needed here
           categoryAverages: {},
@@ -541,7 +580,7 @@ export const getWeeklyLeaderboard = async(): Promise<RecapData[]> => {
           daysPresent: 0,
           dailyAverages: []
         };
-    }).filter(s => s.totalRatings > 0).sort((a,b) => b.overallAverage - a.overallAverage);
+    }).filter(s => s.totalRatings > 0 || s.totalPoints !== 0).sort((a,b) => (b.overallAverage + b.totalPoints) - (a.overallAverage + a.totalPoints));
     
     return weeklyRecap;
 }

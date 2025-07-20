@@ -149,7 +149,6 @@ export function RatingInput({ students, categories, attendance, settings, onRati
         studentId: selectedStudent,
         date: format(date, 'yyyy-MM-dd'),
         ratings: filledManualRatings,
-        average: 0, // Server will calculate the final average
       });
       toast({ title: "Sukses", description: "Rating berhasil disimpan." });
       setSelectedStudent('');

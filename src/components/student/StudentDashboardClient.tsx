@@ -5,10 +5,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, set, startOfMonth, endOfMonth, getMonth, getYear } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User, Trophy, Star } from 'lucide-react';
+import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User, Trophy, Star, Award, ShieldAlert, FileText, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getAttendanceForStudent, checkInStudent, checkOutStudent, getSettings, updateStudent, getWeeklyLeaderboard } from '@/lib/data';
-import type { Student, Attendance, AppSettings, RecapData } from '@/lib/types';
+import { getAttendanceForStudent, checkInStudent, checkOutStudent, getSettings, getWeeklyLeaderboard, getPointRecordsForStudent, getRatings } from '@/lib/data';
+import type { Student, Attendance, AppSettings, RecapData, PointRecord, Rating } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Calendar } from '../ui/calendar';
 import { Badge } from '../ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const statusMapping: { [key in Attendance['status']]: { text: string; color: string; icon: React.ReactNode } } = {
   present: { text: 'Hadir', color: 'text-green-600', icon: <CheckCircle className="h-5 w-5" /> },
@@ -43,6 +44,8 @@ const statusMapping: { [key in Attendance['status']]: { text: string; color: str
 export default function StudentDashboardClient() {
   const [student, setStudent] = useState<Student | null>(null);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [ratings, setRatings] = useState<Rating[]>([]);
+  const [pointRecords, setPointRecords] = useState<PointRecord[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [leaderboard, setLeaderboard] = useState<RecapData[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
@@ -69,13 +72,17 @@ export default function StudentDashboardClient() {
 
   const fetchData = useCallback(async (studentId: string) => {
     try {
-      const [attendanceData, settingsData, leaderboardData] = await Promise.all([
+      const [attendanceData, settingsData, leaderboardData, pointRecordsData, ratingsData] = await Promise.all([
           getAttendanceForStudent(studentId),
           getSettings(),
-          getWeeklyLeaderboard()
+          getWeeklyLeaderboard(),
+          getPointRecordsForStudent(studentId),
+          getRatings(), // get all ratings to find my ratings
       ]);
       setSettings(settingsData);
       setAttendance(attendanceData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setPointRecords(pointRecordsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setRatings(ratingsData.filter(r => r.studentId === studentId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       const todayRecord = attendanceData.find(a => a.date === todayString) || null;
       setTodayAttendance(todayRecord);
       setLeaderboard(leaderboardData);
@@ -116,7 +123,7 @@ export default function StudentDashboardClient() {
   const myWeeklyData = useMemo(() => {
     if (!student) return null;
     const data = leaderboard.find(s => s.studentId === student.id);
-    if (!data) return null;
+    if (!data) return { overallAverage: 0, totalPoints: 0, rank: '-'};
     const rank = leaderboard.findIndex(s => s.studentId === student.id) + 1;
     return { ...data, rank };
   }, [leaderboard, student]);
@@ -333,7 +340,7 @@ export default function StudentDashboardClient() {
            )}
         </Button>
          <Button variant="outline" className="w-full" onClick={() => setReportAbsenceOpen(true)}>
-            <Edit className="mr-2 h-4 w-4" /> Lapor Izin / Sakit
+            <FileText className="mr-2 h-4 w-4" /> Lapor Izin / Sakit
         </Button>
       </div>
     );
@@ -436,11 +443,16 @@ export default function StudentDashboardClient() {
                         <div className="flex items-center justify-between bg-primary/10 border border-primary/50 p-3 rounded-md">
                              <div className="flex items-center gap-3">
                                 <span className="font-bold text-lg bg-primary text-primary-foreground w-8 h-8 flex items-center justify-center rounded-full">{myWeeklyData.rank}</span>
-                                <span className="font-medium text-sm">Rating Anda</span>
+                                <span className="font-medium text-sm">Peringkat Anda</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="font-bold text-primary">{myWeeklyData.overallAverage.toFixed(2)}</span>
-                                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500"/>
+                            <div className='flex flex-col items-end'>
+                               <div className="flex items-center gap-2">
+                                  <span className="font-bold text-primary">{myWeeklyData.overallAverage.toFixed(2)}</span>
+                                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500"/>
+                               </div>
+                                <span className="text-xs text-muted-foreground">
+                                    ({myWeeklyData.totalPoints > 0 ? `+${myWeeklyData.totalPoints}`: myWeeklyData.totalPoints} poin)
+                                </span>
                             </div>
                         </div>
                         <Separator className="my-4"/>
@@ -473,58 +485,133 @@ export default function StudentDashboardClient() {
         </div>
         <div className="xl:col-span-2 flex flex-col gap-8">
             <Card className="shadow-lg">
-                 <CardHeader>
+                <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <History className="h-6 w-6 text-primary" />
-                        Riwayat Presensi
+                        Laporan Aktivitas
                     </CardTitle>
-                    <CardDescription>Berikut adalah catatan kehadiran Anda.</CardDescription>
-                 </CardHeader>
-                 <CardContent>
-                    <ScrollArea className="h-96">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Tanggal</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-center">Check In</TableHead>
-                                    <TableHead className="text-center">Check Out</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {attendance.map(att => (
-                                    <TableRow key={att.id}>
-                                        <TableCell>{format(new Date(att.date), 'PPP', { locale: id })}</TableCell>
-                                        <TableCell>
-                                            <div className={`flex items-center gap-2 ${statusMapping[att.status].color}`}>
-                                                {statusMapping[att.status].icon}
-                                                <span className="font-medium">{statusMapping[att.status].text}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center font-mono">
-                                            {att.checkIn ? format(new Date(att.checkIn), 'HH:mm:ss') : '-'}
-                                        </TableCell>
-                                        <TableCell className="text-center font-mono">
-                                             {att.checkOut ? format(new Date(att.checkOut), 'HH:mm:ss') : '-'}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {attendance.length === 0 && (
+                    <CardDescription>Catatan rating harian, presensi, penghargaan, dan pelanggaran Anda.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="attendance" className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="attendance">Riwayat Presensi</TabsTrigger>
+                        <TabsTrigger value="ratings">Riwayat Rating</TabsTrigger>
+                        <TabsTrigger value="points">Poin +/-</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="attendance">
+                        <ScrollArea className="h-96 mt-4">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                            Belum ada riwayat presensi.
-                                        </TableCell>
+                                        <TableHead>Tanggal</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-center">Check In</TableHead>
+                                        <TableHead className="text-center">Check Out</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
-                 </CardContent>
+                                </TableHeader>
+                                <TableBody>
+                                    {attendance.map(att => (
+                                        <TableRow key={att.id}>
+                                            <TableCell>{format(new Date(att.date), 'PPP', { locale: id })}</TableCell>
+                                            <TableCell>
+                                                <div className={`flex items-center gap-2 ${statusMapping[att.status].color}`}>
+                                                    {statusMapping[att.status].icon}
+                                                    <span className="font-medium">{statusMapping[att.status].text}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono">
+                                                {att.checkIn ? format(new Date(att.checkIn), 'HH:mm:ss') : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono">
+                                                 {att.checkOut ? format(new Date(att.checkOut), 'HH:mm:ss') : '-'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {attendance.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                Belum ada riwayat presensi.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                      </TabsContent>
+                      <TabsContent value="ratings">
+                         <ScrollArea className="h-96 mt-4">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Tanggal</TableHead>
+                                        <TableHead className="text-center">Rata-Rata Rating</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {ratings.map(rating => (
+                                        <TableRow key={rating.id}>
+                                            <TableCell>{format(new Date(rating.date), 'PPP', { locale: id })}</TableCell>
+                                            <TableCell className="text-center">
+                                                <div className='flex items-center justify-center gap-2'>
+                                                  <span className='font-bold text-primary'>{rating.average.toFixed(2)}</span>
+                                                  <StarRating rating={Math.round(rating.average)} onRatingChange={()=>{}} size={16} disabled/>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {ratings.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={2} className="text-center text-muted-foreground">
+                                                Belum ada riwayat rating.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                      </TabsContent>
+                      <TabsContent value="points">
+                         <ScrollArea className="h-96 mt-4">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Tanggal</TableHead>
+                                        <TableHead>Deskripsi</TableHead>
+                                        <TableHead className="text-center">Poin</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {pointRecords.map(record => (
+                                        <TableRow key={record.id}>
+                                            <TableCell>{format(new Date(record.date), 'PPP', { locale: id })}</TableCell>
+                                            <TableCell className="flex items-center gap-2">
+                                              {record.type === 'award' ? <Award className='h-4 w-4 text-green-500'/> : <ShieldAlert className='h-4 w-4 text-red-500'/>}
+                                              {record.description}
+                                            </TableCell>
+                                            <TableCell className={cn("text-center font-bold", record.points > 0 ? 'text-green-600' : 'text-red-600')}>
+                                                {record.points > 0 ? `+${record.points}` : record.points}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {pointRecords.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                                Belum ada riwayat penghargaan atau pelanggaran.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                      </TabsContent>
+                  </Tabs>
+                </CardContent>
             </Card>
             <Card className="shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <CalendarDays className="h-6 w-6 text-primary" />
+                        <TrendingUp className="h-6 w-6 text-primary" />
                         Rekap Kehadiran Bulan Ini
                     </CardTitle>
                     <CardDescription>Kalender visual kehadiran Anda bulan {format(new Date(), 'MMMM yyyy', { locale: id })}.</CardDescription>

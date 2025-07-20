@@ -1,5 +1,4 @@
 
-
 export interface Student {
   id: string;
   name: string;
@@ -36,6 +35,17 @@ export interface Rating {
   createdAt: number;
 }
 
+export interface PointRecord {
+  id: string;
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  type: 'award' | 'violation';
+  description: string;
+  points: number; // can be positive (award) or negative (violation)
+  issuedBy: string; // User ID of the teacher
+  createdAt: number;
+}
+
 export interface Attendance {
     id: string;
     studentId: string;
@@ -52,6 +62,7 @@ export interface RecapData {
   studentName: string;
   photoUrl?: string;
   overallAverage: number;
+  totalPoints: number; // New field for accumulated points
   categoryAverages: { [categoryId: string]: { name: string; average: number } };
   totalRatings: number;
   attendancePercentage: number;
@@ -64,6 +75,7 @@ export interface User {
     name: string;
     email: string;
     password?: string; // Should be handled securely in a real app
+    role: 'teacher'; // Added for clarity
     createdAt: number;
 }
 

@@ -36,13 +36,15 @@ export function Header({ onManageStudents, onManageCategories, onManageUsers, on
     <header className="bg-card border-b sticky top-0 z-10 p-4">
       <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
-            <div className="bg-primary/10 p-1 rounded-md h-10 w-10 flex items-center justify-center">
+            <div className="p-1 rounded-md h-10 w-10 flex items-center justify-center">
                  {settings?.schoolLogoUrl ? (
                     <img src={settings.schoolLogoUrl} alt={settings.schoolName || ''} className="h-full w-full object-contain"/>
                 ) : (
-                    <span className="text-primary font-bold">
-                        {settings?.schoolName.charAt(0)}
-                    </span>
+                    <div className="w-full h-full bg-primary/10 flex items-center justify-center rounded-lg">
+                        <span className="text-primary font-bold">
+                            {settings?.schoolName.charAt(0)}
+                        </span>
+                    </div>
                 )}
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-primary">{settings?.schoolName || "Sistem Kredit Poin"}</h1>

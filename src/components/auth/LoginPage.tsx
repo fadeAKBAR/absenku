@@ -87,13 +87,15 @@ export function LoginPage() {
   return (
     <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-             <div className="mx-auto bg-primary/10 p-2 rounded-lg w-20 h-20 flex items-center justify-center mb-4">
+             <div className="mx-auto p-2 rounded-lg w-20 h-20 flex items-center justify-center mb-4">
                 {settings?.schoolLogoUrl ? (
                     <img src={settings.schoolLogoUrl} alt={settings.schoolName} className="h-full w-full object-contain"/>
                 ) : (
-                    <span className="text-primary text-lg font-bold">
-                        {settings?.schoolName.charAt(0)}
-                    </span>
+                    <div className="w-full h-full bg-primary/10 flex items-center justify-center rounded-lg">
+                        <span className="text-primary text-lg font-bold">
+                            {settings?.schoolName.charAt(0)}
+                        </span>
+                    </div>
                 )}
             </div>
             <CardTitle>{settings?.schoolName || "Sistem Kredit Poin Siswa"}</CardTitle>

@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getStudents, getCategories, getRatings, getUsers, getAttendance, getSettings, getPositions } from '@/lib/data';
-import type { Student, Category, Rating, User, Attendance, AppSettings, Position } from '@/lib/types';
+import { getStudents, getCategories, getRatings, getUsers, getAttendance, getSettings, getPositions, getPointRecords } from '@/lib/data';
+import type { Student, Category, Rating, User, Attendance, AppSettings, Position, PointRecord } from '@/lib/types';
 import { Header } from '@/components/common/Header';
 import { RatingInput } from '@/components/dashboard/RatingInput';
 import { Recap } from '@/components/dashboard/Recap';
@@ -20,26 +20,35 @@ import { CalendarCheck, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SystemInstructions } from './SystemInstructions';
 import { PositionManager } from './PositionManager';
+import { PointRecorder } from './PointRecorder';
 
 export default function DashboardClient() {
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
+  const [pointRecords, setPointRecords] = useState<PointRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
     try {
-      const userLoggedIn = localStorage.getItem('user_authenticated');
-      if (userLoggedIn) {
-        setIsAuthenticated(true);
+      const userString = localStorage.getItem('user_authenticated');
+      if (userString) {
+        const user = JSON.parse(userString);
+        if (user.role === 'teacher') {
+          setIsAuthenticated(true);
+          setCurrentUser(user);
+        } else {
+            router.replace('/student/dashboard');
+        }
       } else {
         router.replace('/');
         toast({
@@ -57,14 +66,15 @@ export default function DashboardClient() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [studentsData, categoriesData, ratingsData, usersData, attendanceData, settingsData, positionsData] = await Promise.all([
+      const [studentsData, categoriesData, ratingsData, usersData, attendanceData, settingsData, positionsData, pointRecordsData] = await Promise.all([
         getStudents(),
         getCategories(),
         getRatings(),
         getUsers(),
         getAttendance(),
         getSettings(),
-        getPositions()
+        getPositions(),
+        getPointRecords()
       ]);
       setStudents(studentsData);
       setCategories(categoriesData);
@@ -73,6 +83,7 @@ export default function DashboardClient() {
       setAttendance(attendanceData);
       setSettings(settingsData);
       setPositions(positionsData);
+      setPointRecords(pointRecordsData);
     } catch (error) {
       console.error("Failed to fetch data", error);
       toast({ title: "Error", description: "Gagal memuat data dari server.", variant: "destructive"});
@@ -99,7 +110,7 @@ export default function DashboardClient() {
     await fetchData();
   };
 
-  if (!isAuthenticated || !settings) {
+  if (!isAuthenticated || !settings || !currentUser) {
     return (
         <div className="w-full h-screen flex items-center justify-center">
             <p>Mengarahkan...</p>
@@ -153,6 +164,11 @@ export default function DashboardClient() {
                   Rekap Bulanan
                 </Button>
             </div>
+            <PointRecorder 
+                students={students} 
+                onPointRecorded={handleDataUpdate}
+                currentUser={currentUser}
+            />
             <RatingInput
               students={students}
               categories={categories}
@@ -168,6 +184,7 @@ export default function DashboardClient() {
               ratings={ratings}
               attendance={attendance}
               positions={positions}
+              pointRecords={pointRecords}
             />
             <SystemInstructions />
           </div>
