@@ -1,12 +1,11 @@
 
-
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, set } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User, Trophy } from 'lucide-react';
+import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User, Trophy, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAttendanceForStudent, checkInStudent, checkOutStudent, getSettings, updateStudent, getWeeklyLeaderboard } from '@/lib/data';
 import type { Student, Attendance, AppSettings, RecapData } from '@/lib/types';
@@ -26,6 +25,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { ReportAbsenceDialog } from './ReportAbsenceDialog';
 import { EditProfileDialog } from './EditProfileDialog';
 import { StarRating } from '../common/StarRating';
+import { cn } from '@/lib/utils';
+import { Separator } from '../ui/separator';
 
 const statusMapping: { [key in Attendance['status']]: { text: string; color: string; icon: React.ReactNode } } = {
   present: { text: 'Hadir', color: 'text-green-600', icon: <CheckCircle className="h-5 w-5" /> },
@@ -190,6 +191,14 @@ export default function StudentDashboardClient() {
         setIsSubmitting(false);
     }
   }
+
+  const myWeeklyData = useMemo(() => {
+    if (!student) return null;
+    const data = leaderboard.find(s => s.studentId === student.id);
+    if (!data) return null;
+    const rank = leaderboard.findIndex(s => s.studentId === student.id) + 1;
+    return { ...data, rank };
+  }, [leaderboard, student]);
 
 
   if (!student || !settings) {
@@ -366,10 +375,25 @@ export default function StudentDashboardClient() {
               <CardDescription>Performa terbaik minggu ini.</CardDescription>
             </CardHeader>
             <CardContent>
+                {myWeeklyData && (
+                    <div className="mb-4">
+                        <div className="flex items-center justify-between bg-primary/10 border border-primary/50 p-3 rounded-md">
+                             <div className="flex items-center gap-3">
+                                <span className="font-bold text-lg bg-primary text-primary-foreground w-8 h-8 flex items-center justify-center rounded-full">{myWeeklyData.rank}</span>
+                                <span className="font-medium text-sm">Rating Anda</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-primary">{myWeeklyData.overallAverage.toFixed(2)}</span>
+                                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500"/>
+                            </div>
+                        </div>
+                        <Separator className="my-4"/>
+                    </div>
+                )}
               <ScrollArea className="h-64">
                 <ul className="space-y-3">
                     {leaderboard.length > 0 ? leaderboard.slice(0, 10).map((s, index) => (
-                         <li key={s.studentId} className="flex items-center justify-between bg-secondary p-3 rounded-md">
+                         <li key={s.studentId} className={cn("flex items-center justify-between p-3 rounded-md", s.studentId === student.id ? "bg-primary/10" : "bg-secondary")}>
                             <div className="flex items-center gap-3">
                                 <span className={`font-bold text-lg ${index < 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'} w-8 h-8 flex items-center justify-center rounded-full`}>{index + 1}</span>
                                 <Avatar className="h-8 w-8">
@@ -447,3 +471,5 @@ export default function StudentDashboardClient() {
     </>
   );
 }
+
+    
