@@ -1,13 +1,14 @@
+
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, Trash2, Edit, User as UserIcon, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, Edit, User as UserIcon, Eye, EyeOff, Award } from 'lucide-react';
 
-import type { Student } from '@/lib/types';
-import { addStudent, deleteStudent, updateStudent } from '@/lib/data';
+import type { Student, Position } from '@/lib/types';
+import { addStudent, deleteStudent, updateStudent, getPositions } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 import {
@@ -24,6 +25,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '../ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const studentSchema = z.object({
   name: z.string().min(3, "Nama siswa minimal 3 karakter."),
@@ -33,6 +35,7 @@ const studentSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   parentPhone: z.string().optional(),
+  positionId: z.string().optional(),
 });
 
 type StudentManagerProps = {
@@ -46,13 +49,24 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [positions, setPositions] = useState<Position[]>([]);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
-    defaultValues: { name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" },
+    defaultValues: { name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "", positionId: "" },
   });
+  
+  useEffect(() => {
+    async function fetchPositions() {
+      if (isOpen) {
+        const fetchedPositions = await getPositions();
+        setPositions(fetchedPositions);
+      }
+    }
+    fetchPositions();
+  }, [isOpen]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -74,13 +88,14 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
         photoUrl: student.photoUrl,
         address: student.address,
         phone: student.phone,
-        parentPhone: student.parentPhone
+        parentPhone: student.parentPhone,
+        positionId: student.positionId || ''
     });
   };
 
   const handleCancelEdit = () => {
     setEditingStudent(null);
-    form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" });
+    form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "", positionId: "" });
   };
 
   async function onSubmit(values: z.infer<typeof studentSchema>) {
@@ -91,17 +106,19 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
 
     setIsSubmitting(true);
     try {
+      const studentData = {
+          ...values,
+          password: values.password || undefined,
+          positionId: values.positionId || undefined
+      }
       if (editingStudent) {
-        await updateStudent(editingStudent.id, {
-            ...values,
-            password: values.password || undefined
-        });
+        await updateStudent(editingStudent.id, studentData);
         toast({ title: "Sukses", description: "Data siswa telah diperbarui." });
       } else {
-        await addStudent(values as z.infer<typeof studentSchema> & { password: string });
+        await addStudent(studentData as z.infer<typeof studentSchema> & { password: string });
         toast({ title: "Sukses", description: "Siswa baru telah ditambahkan." });
       }
-      form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" });
+      form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "", positionId: "" });
       setEditingStudent(null);
       onUpdate();
     } catch (error: any) {
@@ -124,6 +141,9 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
   }
   
   const photoUrl = form.watch('photoUrl');
+  const getPositionName = (positionId?: string) => {
+      return positions.find(p => p.id === positionId)?.name || "Tanpa Jabatan";
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { onOpenChange(open); handleCancelEdit(); }}>
@@ -170,6 +190,29 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                     <FormMessage />
                     </FormItem>
                 )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="positionId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="flex items-center gap-2"><Award className="h-4 w-4"/> Jabatan</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Pilih jabatan" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="">Tanpa Jabatan</SelectItem>
+                                {positions.map(pos => (
+                                    <SelectItem key={pos.id} value={pos.id}>{pos.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
                 />
                 <FormField
                 control={form.control}
@@ -268,7 +311,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                       </Avatar>
                       <div className="text-sm">
                         <p className="font-medium">{student.name}</p>
-                        <p className="text-muted-foreground">{student.email}</p>
+                        <p className="text-muted-foreground">{getPositionName(student.positionId)}</p>
                       </div>
                    </div>
                   <div className="flex items-center gap-1">

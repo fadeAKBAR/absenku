@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { Download, BarChart2 } from 'lucide-react';
 import { startOfWeek, startOfMonth, format } from 'date-fns';
-import type { Student, Category, Rating, RecapData, Attendance } from '@/lib/types';
+import type { Student, Category, Rating, RecapData, Attendance, Position } from '@/lib/types';
 import { exportToCsv } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,12 +14,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { StudentList } from './StudentList';
 
 type RecapProps = {
   students: Student[];
   categories: Category[];
   ratings: Rating[];
   attendance: Attendance[];
+  positions: Position[];
 };
 
 const getStudentInitials = (name: string) => {
@@ -30,29 +32,7 @@ const getStudentInitials = (name: string) => {
     return name.substring(0, 2).toUpperCase();
 };
 
-const RankingList = ({ title, students, highlightClass }: { title: string; students: RecapData[], highlightClass: string }) => (
-    <div>
-        <h3 className="font-semibold mb-2">{title}</h3>
-        <ul className="space-y-2">
-            {students.map((s, index) => (
-                <li key={s.studentId} className="flex items-center justify-between bg-card p-2 rounded-md border">
-                    <div className="flex items-center gap-3">
-                        <span className={`font-bold text-lg ${highlightClass} text-white w-6 h-6 flex items-center justify-center rounded-full`}>{index + 1}</span>
-                         <Avatar>
-                            <AvatarImage src={s.photoUrl} alt={s.studentName} />
-                            <AvatarFallback>{getStudentInitials(s.studentName)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{s.studentName}</span>
-                    </div>
-                    <span className={`font-bold text-lg ${highlightClass}`}>{s.overallAverage.toFixed(2)}</span>
-                </li>
-            ))}
-        </ul>
-    </div>
-);
-
-
-export function Recap({ students, categories, ratings, attendance }: RecapProps) {
+export function Recap({ students, categories, ratings, attendance, positions }: RecapProps) {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'all-time'>('weekly');
 
   const { filteredRatings, filteredAttendance } = useMemo(() => {
@@ -133,9 +113,6 @@ export function Recap({ students, categories, ratings, attendance }: RecapProps)
       };
     }).sort((a, b) => b.overallAverage - a.overallAverage);
   }, [filteredRatings, filteredAttendance, students, categories]);
-
-  const topStudents = recapData.filter(s => s.totalRatings > 0).slice(0, 3);
-  const bottomStudents = recapData.filter(s => s.totalRatings > 0).slice(-3).reverse();
   
   const handleExport = () => {
     exportToCsv(recapData, categories, period);
@@ -145,8 +122,8 @@ export function Recap({ students, categories, ratings, attendance }: RecapProps)
     <Card className="transition-shadow hover:shadow-lg">
       <CardHeader className="flex flex-row items-start justify-between">
         <div>
-          <CardTitle>Rekap Poin & Peringkat</CardTitle>
-          <CardDescription>Tinjau performa siswa secara keseluruhan.</CardDescription>
+          <CardTitle>Rekap & Peringkat Siswa</CardTitle>
+          <CardDescription>Tinjau performa siswa dan daftar seluruh siswa yang terdaftar.</CardDescription>
         </div>
         <Button variant="outline" size="sm" onClick={handleExport} disabled={recapData.length === 0}>
           <Download className="mr-2 h-4 w-4" />
@@ -154,88 +131,98 @@ export function Recap({ students, categories, ratings, attendance }: RecapProps)
         </Button>
       </CardHeader>
       <CardContent>
-        <Tabs value={period} onValueChange={(v) => setPeriod(v as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="weekly">Mingguan</TabsTrigger>
-            <TabsTrigger value="monthly">Bulanan</TabsTrigger>
-            <TabsTrigger value="all-time">Semua</TabsTrigger>
+        <Tabs defaultValue="student-list" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="student-list">Daftar Siswa</TabsTrigger>
+            <TabsTrigger value="ranking">Peringkat</TabsTrigger>
           </TabsList>
-          <TabsContent value={period}>
-            <div className="mt-4 space-y-8">
-                {recapData.filter(s => s.totalRatings > 0).length > 0 ? (
-                    <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <RankingList title="🏆 Performa Terbaik" students={topStudents} highlightClass="bg-green-500" />
-                            <RankingList title="⚠️ Perlu Perhatian" students={bottomStudents} highlightClass="bg-red-500" />
-                        </div>
+          
+          <TabsContent value="student-list" className="mt-4">
+            <StudentList students={students} positions={positions} />
+          </TabsContent>
 
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[200px]">Siswa</TableHead>
-                                    <TableHead className="text-center">Grafik</TableHead>
-                                    <TableHead className="text-center">Rata-rata</TableHead>
-                                    <TableHead className="text-center">Kehadiran</TableHead>
-                                    {categories.map(cat => (
-                                      <TableHead key={cat.id} className="text-center hidden md:table-cell">{cat.name}</TableHead>
+          <TabsContent value="ranking">
+             <Tabs value={period} onValueChange={(v) => setPeriod(v as any)} className="w-full mt-4">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="weekly">Mingguan</TabsTrigger>
+                <TabsTrigger value="monthly">Bulanan</TabsTrigger>
+                <TabsTrigger value="all-time">Semua</TabsTrigger>
+              </TabsList>
+              <TabsContent value={period}>
+                <div className="mt-4 space-y-8">
+                    {recapData.filter(s => s.totalRatings > 0).length > 0 ? (
+                        <>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[50px]">Pkt.</TableHead>
+                                        <TableHead className="w-[200px]">Siswa</TableHead>
+                                        <TableHead className="text-center">Grafik</TableHead>
+                                        <TableHead className="text-center">Rata-rata</TableHead>
+                                        <TableHead className="text-center">Kehadiran</TableHead>
+                                        {categories.map(cat => (
+                                          <TableHead key={cat.id} className="text-center hidden md:table-cell">{cat.name}</TableHead>
+                                        ))}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {recapData.map((data, index) => (
+                                    <TableRow key={data.studentId}>
+                                        <TableCell className="font-bold text-center">{index + 1}</TableCell>
+                                        <TableCell className="font-medium flex items-center gap-3">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={data.photoUrl} alt={data.studentName} />
+                                                <AvatarFallback>{getStudentInitials(data.studentName)}</AvatarFallback>
+                                            </Avatar>
+                                            {data.studentName}
+                                        </TableCell>
+                                         <TableCell className="text-center">
+                                           <Dialog>
+                                             <DialogTrigger asChild>
+                                               <Button variant="outline" size="icon" disabled={data.dailyAverages.length === 0}>
+                                                 <BarChart2 className="h-4 w-4" />
+                                               </Button>
+                                             </DialogTrigger>
+                                             <DialogContent className="max-w-2xl">
+                                               <DialogHeader>
+                                                 <DialogTitle>Grafik Performa: {data.studentName}</DialogTitle>
+                                               </DialogHeader>
+                                               <div className="h-80 w-full mt-4">
+                                                  <ChartContainer config={{
+                                                    average: { label: "Rata-rata", color: "hsl(var(--primary))" },
+                                                  }}>
+                                                    <BarChart data={data.dailyAverages} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+                                                      <CartesianGrid vertical={false} />
+                                                      <XAxis dataKey="date" tickFormatter={(val) => format(new Date(val), "d MMM")} />
+                                                      <YAxis domain={[0, 5]} />
+                                                      <ChartTooltip content={<ChartTooltipContent />} />
+                                                      <Bar dataKey="average" fill="var(--color-average)" radius={4} />
+                                                    </BarChart>
+                                                  </ChartContainer>
+                                                </div>
+                                             </DialogContent>
+                                           </Dialog>
+                                         </TableCell>
+                                        <TableCell className="font-bold text-center text-primary">{data.overallAverage.toFixed(2)}</TableCell>
+                                        <TableCell className="text-center">{data.attendancePercentage.toFixed(0)}%</TableCell>
+                                        {categories.map(cat => (
+                                          <TableCell key={cat.id} className="text-center hidden md:table-cell">
+                                              {data.categoryAverages[cat.id]?.average.toFixed(2) ?? 'N/A'}
+                                          </TableCell>
+                                        ))}
+                                    </TableRow>
                                     ))}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {recapData.map(data => (
-                                <TableRow key={data.studentId}>
-                                    <TableCell className="font-medium flex items-center gap-3">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={data.photoUrl} alt={data.studentName} />
-                                            <AvatarFallback>{getStudentInitials(data.studentName)}</AvatarFallback>
-                                        </Avatar>
-                                        {data.studentName}
-                                    </TableCell>
-                                     <TableCell className="text-center">
-                                       <Dialog>
-                                         <DialogTrigger asChild>
-                                           <Button variant="outline" size="icon" disabled={data.dailyAverages.length === 0}>
-                                             <BarChart2 className="h-4 w-4" />
-                                           </Button>
-                                         </DialogTrigger>
-                                         <DialogContent className="max-w-2xl">
-                                           <DialogHeader>
-                                             <DialogTitle>Grafik Performa: {data.studentName}</DialogTitle>
-                                           </DialogHeader>
-                                           <div className="h-80 w-full mt-4">
-                                              <ChartContainer config={{
-                                                average: { label: "Rata-rata", color: "hsl(var(--primary))" },
-                                              }}>
-                                                <BarChart data={data.dailyAverages} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
-                                                  <CartesianGrid vertical={false} />
-                                                  <XAxis dataKey="date" tickFormatter={(val) => format(new Date(val), "d MMM")} />
-                                                  <YAxis domain={[0, 5]} />
-                                                  <ChartTooltip content={<ChartTooltipContent />} />
-                                                  <Bar dataKey="average" fill="var(--color-average)" radius={4} />
-                                                </BarChart>
-                                              </ChartContainer>
-                                            </div>
-                                         </DialogContent>
-                                       </Dialog>
-                                     </TableCell>
-                                    <TableCell className="font-bold text-center text-primary">{data.overallAverage.toFixed(2)}</TableCell>
-                                    <TableCell className="text-center">{data.attendancePercentage.toFixed(0)}%</TableCell>
-                                    {categories.map(cat => (
-                                      <TableCell key={cat.id} className="text-center hidden md:table-cell">
-                                          {data.categoryAverages[cat.id]?.average.toFixed(2) ?? 'N/A'}
-                                      </TableCell>
-                                    ))}
-                                </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </>
-                ) : (
-                    <div className="text-center py-16 text-muted-foreground">
-                        <p>Tidak ada data rating untuk periode ini.</p>
-                    </div>
-                )}
-            </div>
+                                </TableBody>
+                            </Table>
+                        </>
+                    ) : (
+                        <div className="text-center py-16 text-muted-foreground">
+                            <p>Tidak ada data rating untuk periode ini.</p>
+                        </div>
+                    )}
+                </div>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </CardContent>

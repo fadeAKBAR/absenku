@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getStudents, getCategories, getRatings, getUsers, getAttendance, getSettings } from '@/lib/data';
-import type { Student, Category, Rating, User, Attendance, AppSettings } from '@/lib/types';
+import { getStudents, getCategories, getRatings, getUsers, getAttendance, getSettings, getPositions } from '@/lib/data';
+import type { Student, Category, Rating, User, Attendance, AppSettings, Position } from '@/lib/types';
 import { Header } from '@/components/common/Header';
 import { RatingInput } from '@/components/dashboard/RatingInput';
 import { Recap } from '@/components/dashboard/Recap';
@@ -19,10 +19,12 @@ import { MonthlyAttendanceRecap } from './MonthlyAttendanceRecap';
 import { CalendarCheck, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SystemInstructions } from './SystemInstructions';
+import { PositionManager } from './PositionManager';
 
 export default function DashboardClient() {
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -55,13 +57,14 @@ export default function DashboardClient() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [studentsData, categoriesData, ratingsData, usersData, attendanceData, settingsData] = await Promise.all([
+      const [studentsData, categoriesData, ratingsData, usersData, attendanceData, settingsData, positionsData] = await Promise.all([
         getStudents(),
         getCategories(),
         getRatings(),
         getUsers(),
         getAttendance(),
-        getSettings()
+        getSettings(),
+        getPositions()
       ]);
       setStudents(studentsData);
       setCategories(categoriesData);
@@ -69,6 +72,7 @@ export default function DashboardClient() {
       setUsers(usersData);
       setAttendance(attendanceData);
       setSettings(settingsData);
+      setPositions(positionsData);
     } catch (error) {
       console.error("Failed to fetch data", error);
       toast({ title: "Error", description: "Gagal memuat data dari server.", variant: "destructive"});
@@ -85,6 +89,7 @@ export default function DashboardClient() {
   
   const [isStudentManagerOpen, setStudentManagerOpen] = useState(false);
   const [isCategoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [isPositionManagerOpen, setPositionManagerOpen] = useState(false);
   const [isUserManagerOpen, setUserManagerOpen] = useState(false);
   const [isAttendanceManagerOpen, setAttendanceManagerOpen] = useState(false);
   const [isMonthlyRecapOpen, setMonthlyRecapOpen] = useState(false);
@@ -108,6 +113,7 @@ export default function DashboardClient() {
          <Header
             onManageStudents={() => setStudentManagerOpen(true)}
             onManageCategories={() => setCategoryManagerOpen(true)}
+            onManagePositions={() => setPositionManagerOpen(true)}
             onManageUsers={() => setUserManagerOpen(true)}
             onManageSettings={() => setSettingsManagerOpen(true)}
           />
@@ -129,6 +135,7 @@ export default function DashboardClient() {
       <Header
         onManageStudents={() => setStudentManagerOpen(true)}
         onManageCategories={() => setCategoryManagerOpen(true)}
+        onManagePositions={() => setPositionManagerOpen(true)}
         onManageUsers={() => setUserManagerOpen(true)}
         onManageSettings={() => setSettingsManagerOpen(true)}
       />
@@ -160,6 +167,7 @@ export default function DashboardClient() {
               categories={categories}
               ratings={ratings}
               attendance={attendance}
+              positions={positions}
             />
             <SystemInstructions />
           </div>
@@ -176,6 +184,12 @@ export default function DashboardClient() {
         isOpen={isCategoryManagerOpen}
         onOpenChange={setCategoryManagerOpen}
         categories={categories}
+        onUpdate={handleDataUpdate}
+      />
+      <PositionManager
+        isOpen={isPositionManagerOpen}
+        onOpenChange={setPositionManagerOpen}
+        positions={positions}
         onUpdate={handleDataUpdate}
       />
       <UserManager

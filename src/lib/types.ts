@@ -9,6 +9,13 @@ export interface Student {
   address?: string;
   phone?: string;
   parentPhone?: string;
+  positionId?: string; // ID of the assigned position
+  createdAt: number;
+}
+
+export interface Position {
+  id: string;
+  name: string;
   createdAt: number;
 }
 

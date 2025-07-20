@@ -1,6 +1,6 @@
 
 
-import type { Student, Category, Rating, User, Attendance, AppSettings, RecapData } from './types';
+import type { Student, Category, Rating, User, Attendance, AppSettings, RecapData, Position } from './types';
 import { format, set, startOfWeek, differenceInMinutes } from 'date-fns';
 
 // --- In-memory data store for prototype ---
@@ -17,6 +17,8 @@ let categories: Category[] = [];
 let ratings: Rating[] = [];
 
 let attendance: Attendance[] = [];
+
+let positions: Position[] = [];
 
 let settings: AppSettings = {
     schoolName: "SMKN 3 SOPPENG",
@@ -89,6 +91,7 @@ if (typeof window !== 'undefined') {
   categories = loadFromLocalStorage('app_categories', []);
   ratings = loadFromLocalStorage('app_ratings', []);
   attendance = loadFromLocalStorage('app_attendance', []);
+  positions = loadFromLocalStorage('app_positions', []);
   settings = loadFromLocalStorage('app_settings', settings);
   ensureAttendanceCategory();
 }
@@ -214,6 +217,49 @@ export const deleteStudent = async (id: string): Promise<void> => {
   saveToLocalStorage('app_ratings', ratings);
   saveToLocalStorage('app_attendance', attendance);
 };
+
+// --- Position Management ---
+export const getPositions = async (): Promise<Position[]> => {
+    await simulateDelay(50);
+    return [...positions].sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const addPosition = async (name: string): Promise<Position> => {
+    await simulateDelay(200);
+    const newPosition: Position = {
+        id: `pos${Date.now()}`,
+        name,
+        createdAt: Date.now(),
+    };
+    positions.push(newPosition);
+    saveToLocalStorage('app_positions', positions);
+    return newPosition;
+};
+
+export const updatePosition = async (id: string, name: string): Promise<Position> => {
+    await simulateDelay(200);
+    let positionToUpdate = positions.find(p => p.id === id);
+    if (!positionToUpdate) {
+        throw new Error("Jabatan tidak ditemukan");
+    }
+    positionToUpdate.name = name;
+    saveToLocalStorage('app_positions', positions);
+    return positionToUpdate;
+};
+
+export const deletePosition = async (id: string): Promise<void> => {
+    await simulateDelay(200);
+    positions = positions.filter(p => p.id !== id);
+    // Remove this position from all students
+    students.forEach(student => {
+        if (student.positionId === id) {
+            student.positionId = undefined;
+        }
+    });
+    saveToLocalStorage('app_positions', positions);
+    saveToLocalStorage('app_students', students);
+};
+
 
 // --- Category Management ---
 export const getCategories = async (): Promise<Category[]> => {

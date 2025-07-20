@@ -2,7 +2,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookUser, GanttChartSquare, LogOut, Users, Settings } from 'lucide-react';
+import { BookUser, GanttChartSquare, LogOut, Users, Settings, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSettings } from '@/lib/data';
 import { AppSettings } from '@/lib/types';
@@ -12,9 +12,10 @@ type HeaderProps = {
   onManageCategories: () => void;
   onManageUsers: () => void;
   onManageSettings: () => void;
+  onManagePositions: () => void;
 };
 
-export function Header({ onManageStudents, onManageCategories, onManageUsers, onManageSettings }: HeaderProps) {
+export function Header({ onManageStudents, onManageCategories, onManageUsers, onManageSettings, onManagePositions }: HeaderProps) {
   const router = useRouter();
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
@@ -37,7 +38,7 @@ export function Header({ onManageStudents, onManageCategories, onManageUsers, on
         <div className="flex items-center gap-2">
             <div className="bg-primary/10 p-1 rounded-md h-10 w-10 flex items-center justify-center">
                  {settings?.schoolLogoUrl ? (
-                    <img src={settings.schoolLogoUrl} alt={settings.schoolName} className="h-full w-full object-contain"/>
+                    <img src={settings.schoolLogoUrl} alt={settings.schoolName || ''} className="h-full w-full object-contain"/>
                 ) : (
                     <span className="text-primary font-bold">
                         {settings?.schoolName.charAt(0)}
@@ -54,6 +55,10 @@ export function Header({ onManageStudents, onManageCategories, onManageUsers, on
           <Button variant="outline" size="sm" onClick={onManageCategories}>
             <GanttChartSquare className="mr-0 md:mr-2 h-4 w-4" />
              <span className="hidden md:inline">Kategori</span>
+          </Button>
+           <Button variant="outline" size="sm" onClick={onManagePositions}>
+            <Award className="mr-0 md:mr-2 h-4 w-4" />
+             <span className="hidden md:inline">Jabatan</span>
           </Button>
            <Button variant="outline" size="sm" onClick={onManageUsers}>
             <Users className="mr-0 md:mr-2 h-4 w-4" />
