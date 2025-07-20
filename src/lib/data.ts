@@ -20,10 +20,10 @@ let attendance: Attendance[] = [];
 
 // --- Geolocation Constants ---
 export const SCHOOL_LOCATION = {
-  latitude: -4.3552, // perkiraan latitude untuk SMKN 3 Soppeng
-  longitude: 119.8833, // perkiraan longitude untuk SMKN 3 Soppeng
+  latitude: -4.329808,
+  longitude: 120.028856,
 };
-export const MAX_DISTANCE_METERS = 200; // Radius 200 meter
+export const MAX_DISTANCE_METERS = 50; // Radius 50 meter
 
 // --- Helper Functions ---
 
