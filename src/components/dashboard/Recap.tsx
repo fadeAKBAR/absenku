@@ -16,6 +16,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { StudentList } from './StudentList';
 import { useToast } from '@/hooks/use-toast';
+import { id } from 'date-fns/locale';
 
 type RecapProps = {
   students: Student[];
@@ -147,13 +148,29 @@ export function Recap({ students, categories, ratings, attendance, positions, po
 
     const todayString = format(new Date(), 'yyyy-MM-dd');
     const todayAttendance = attendance.find(a => a.studentId === student.studentId && a.date === todayString);
+    const todayFormatted = format(new Date(), 'eeee, dd MMMM yyyy', { locale: id });
 
-    let message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan rekap poin mingguan ananda:\n\nRata-rata Rating: *${student.overallAverage.toFixed(2)}*\nTotal Poin Tambahan: *${student.totalPoints}*\n\nTerima kasih.`;
+    let message: string;
 
-    if (todayAttendance?.status === 'absent') {
-       message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan bahwa ananda tercatat *ALPA* pada hari ini, ${format(new Date(), 'dd MMMM yyyy')}. Mohon konfirmasinya. Terima kasih.`;
-    } else if (todayAttendance) {
-       message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan ananda telah *HADIR* di sekolah hari ini, ${format(new Date(), 'dd MMMM yyyy')}. Terima kasih.`;
+    if (todayAttendance) {
+      const statusText = todayAttendance.status === 'present' 
+        ? 'HADIR' 
+        : todayAttendance.status === 'late'
+        ? 'TERLAMBAT'
+        : todayAttendance.status.toUpperCase();
+
+      if (todayAttendance.status === 'absent') {
+          message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan bahwa ananda tercatat *ALPA* pada hari ini, ${todayFormatted}. Mohon konfirmasinya. Terima kasih.`;
+      } else if (todayAttendance.checkIn) {
+          const checkInTime = format(new Date(todayAttendance.checkIn), 'HH:mm');
+          message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan ananda telah *${statusText}* di sekolah hari ini, ${todayFormatted}, pada pukul *${checkInTime}*. Terima kasih.`;
+      } else {
+         // Case for sick or permit without check-in time
+          message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan ananda hari ini berstatus *${statusText}* pada tanggal ${todayFormatted}. Terima kasih.`;
+      }
+    } else {
+        // Fallback to weekly recap if no attendance record for today
+        message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan rekap poin mingguan ananda:\n\nRata-rata Rating: *${student.overallAverage.toFixed(2)}*\nTotal Poin Tambahan: *${student.totalPoints > 0 ? '+' : ''}${student.totalPoints}*\n\nTerima kasih.`;
     }
     
     const encodedMessage = encodeURIComponent(message);
@@ -283,3 +300,5 @@ export function Recap({ students, categories, ratings, attendance, positions, po
     </Card>
   );
 }
+
+    
