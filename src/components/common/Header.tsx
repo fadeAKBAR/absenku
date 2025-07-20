@@ -1,5 +1,6 @@
 import React from 'react';
-import { BookUser, GanttChartSquare } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { BookUser, GanttChartSquare, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type HeaderProps = {
@@ -8,6 +9,15 @@ type HeaderProps = {
 };
 
 export function Header({ onManageStudents, onManageCategories }: HeaderProps) {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // In a real app, you'd clear tokens, etc.
+    // For this prototype, we just navigate to login.
+    localStorage.removeItem('user_authenticated');
+    router.push('/');
+  };
+
   return (
     <header className="bg-card border-b sticky top-0 z-10 p-4">
       <div className="container mx-auto flex items-center justify-between">
@@ -28,16 +38,20 @@ export function Header({ onManageStudents, onManageCategories }: HeaderProps) {
                     <path d="M2 12l10 5 10-5" />
                 </svg>
             </div>
-            <h1 className="text-2xl font-bold text-primary">GradeWise</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-primary">Sistem Kredit Poin Siswa</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={onManageStudents}>
-            <BookUser className="mr-2 h-4 w-4" />
-            Manage Students
+          <Button variant="outline" size="sm" onClick={onManageStudents}>
+            <BookUser className="mr-0 md:mr-2 h-4 w-4" />
+            <span className="hidden md:inline">Manage Students</span>
           </Button>
-          <Button variant="outline" onClick={onManageCategories}>
-            <GanttChartSquare className="mr-2 h-4 w-4" />
-            Manage Categories
+          <Button variant="outline" size="sm" onClick={onManageCategories}>
+            <GanttChartSquare className="mr-0 md:mr-2 h-4 w-4" />
+             <span className="hidden md:inline">Manage Categories</span>
+          </Button>
+          <Button variant="destructive" size="sm" onClick={handleLogout}>
+             <LogOut className="mr-0 md:mr-2 h-4 w-4" />
+             <span className="hidden md:inline">Logout</span>
           </Button>
         </div>
       </div>

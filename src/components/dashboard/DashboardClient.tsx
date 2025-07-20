@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getStudents, getCategories, getRatings, addStudent, deleteStudent, addCategory, deleteCategory, saveRating } from '@/lib/data';
+import { useRouter } from 'next/navigation';
+import { getStudents, getCategories, getRatings } from '@/lib/data';
 import type { Student, Category, Rating } from '@/lib/types';
 import { Header } from '@/components/common/Header';
 import { RatingInput } from '@/components/dashboard/RatingInput';
@@ -9,15 +10,32 @@ import { Recap } from '@/components/dashboard/Recap';
 import { StudentManager } from '@/components/dashboard/StudentManager';
 import { CategoryManager } from '@/components/dashboard/CategoryManager';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 export default function DashboardClient() {
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  const router = useRouter();
+  const { toast } = useToast();
 
-  const [isStudentManagerOpen, setStudentManagerOpen] = useState(false);
-  const [isCategoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  useEffect(() => {
+    // Simple auth check for prototype
+    const userLoggedIn = localStorage.getItem('user_authenticated');
+    if (userLoggedIn !== 'true') {
+      router.replace('/');
+      toast({
+        title: "Akses Ditolak",
+        description: "Silakan login untuk mengakses dasbor.",
+        variant: "destructive"
+      });
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [router, toast]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -32,28 +50,48 @@ export default function DashboardClient() {
       setRatings(ratingsData);
     } catch (error) {
       console.error("Failed to fetch data", error);
+      toast({ title: "Error", description: "Gagal memuat data dari server.", variant: "destructive"});
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [fetchData, isAuthenticated]);
+  
+  const [isStudentManagerOpen, setStudentManagerOpen] = useState(false);
+  const [isCategoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const handleDataUpdate = async () => {
-    // This function is passed to child components to trigger a refetch
     await fetchData();
   };
 
+  if (!isAuthenticated) {
+    // Show a blank screen or a simple loader while redirecting
+    return (
+        <div className="w-full h-screen flex items-center justify-center">
+            <p>Mengarahkan ke halaman login...</p>
+        </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="w-full h-screen p-8">
-        <Skeleton className="h-16 w-full mb-8" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Skeleton className="h-96 w-full" />
-          <div className="lg:col-span-2">
+      <div className="w-full min-h-screen">
+         <Header
+            onManageStudents={() => setStudentManagerOpen(true)}
+            onManageCategories={() => setCategoryManagerOpen(true)}
+          />
+        <div className="p-8">
+          <Skeleton className="h-16 w-full mb-8" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Skeleton className="h-96 w-full" />
+            <div className="lg:col-span-2">
+              <Skeleton className="h-96 w-full" />
+            </div>
           </div>
         </div>
       </div>

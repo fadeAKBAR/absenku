@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'GradeWise - Student Credit Point System',
-  description: 'A modern way to manage student credit points, built with Next.js and Firebase.',
+  title: 'Sistem Kredit Poin Siswa',
+  description: 'Aplikasi untuk mengelola kredit poin siswa.',
 };
 
 export default function RootLayout({

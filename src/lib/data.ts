@@ -1,55 +1,10 @@
 import type { Student, Category, Rating } from './types';
 
-let students: Student[] = [
-  { id: '1', name: 'Budi Hartono', createdAt: Date.now() },
-  { id: '2', name: 'Citra Lestari', createdAt: Date.now() },
-  { id: '3', name: 'Ahmad Dahlan', createdAt: Date.now() },
-  { id: '4', name: 'Dewi Sartika', createdAt: Date.now() },
-  { id: '5', name: 'Eka Wijaya', createdAt: Date.now() },
-  { id: '6', name: 'Fitriani', createdAt: Date.now() },
-];
+let students: Student[] = [];
 
-let categories: Category[] = [
-  { id: 'cat1', name: 'Kehadiran', createdAt: Date.now() },
-  { id: 'cat2', name: 'Kerapihan', createdAt: Date.now() },
-  { id: 'cat3', name: 'Partisipasi', createdAt: Date.now() },
-];
+let categories: Category[] = [];
 
 let ratings: Rating[] = [];
-
-// Simulate some historical data
-const today = new Date();
-const dates = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date();
-  d.setDate(today.getDate() - i);
-  return d.toISOString().split('T')[0];
-});
-
-students.forEach(student => {
-  dates.forEach(date => {
-    const shouldHaveRating = Math.random() > 0.2;
-    if (shouldHaveRating) {
-      const dailyRatings: { [key: string]: number } = {};
-      let total = 0;
-      let count = 0;
-      categories.forEach(cat => {
-        const rating = Math.floor(Math.random() * 3) + 3; // a rating between 3-5
-        dailyRatings[cat.id] = rating;
-        total += rating;
-        count++;
-      });
-      ratings.push({
-        id: `${student.id}-${date}`,
-        studentId: student.id,
-        date,
-        ratings: dailyRatings,
-        average: total / count,
-        createdAt: new Date(date).getTime(),
-      });
-    }
-  });
-});
-
 
 const simulateDelay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
