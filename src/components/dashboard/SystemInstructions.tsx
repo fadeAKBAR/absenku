@@ -1,7 +1,7 @@
 
 "use client"
 
-import { BookCheck, Info, Star, Users, Workflow, AlertTriangle } from 'lucide-react';
+import { BookCheck, Info, Star, Users, Workflow, AlertTriangle, SmartphoneNfc } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Accordion,
@@ -30,7 +30,7 @@ export function SystemInstructions() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="text-muted-foreground space-y-2 pl-2">
-              <p>1. <strong>Siswa Check-in:</strong> Siswa melakukan check-in setiap hari melalui aplikasi mereka. Sistem akan mencatat waktu dan status kehadiran (hadir/terlambat).</p>
+              <p>1. <strong>Siswa Check-in:</strong> Siswa melakukan check-in setiap hari melalui aplikasi mereka. Sistem akan mencatat waktu dan status kehadiran. Pada check-in pertama, perangkat siswa akan otomatis terdaftar untuk mencegah titip absen.</p>
               <p>2. <strong>Rating Otomatis Terbuat:</strong> Saat check-in berhasil, sebuah rating awal untuk hari itu otomatis dibuat untuk siswa, berisi poin kehadiran.</p>
               <p>3. <strong>Guru Memberi Rating Manual:</strong> Guru menginput rating harian untuk kategori lain (misal: Partisipasi, Tugas) melalui panel "Input Rating Harian".</p>
               <p>4. <strong>Data Terekap:</strong> Semua data rating dan kehadiran akan direkapitulasi secara mingguan, bulanan, atau keseluruhan pada panel "Rekap Poin & Peringkat".</p>
@@ -65,7 +65,7 @@ export function SystemInstructions() {
             <AccordionContent className="text-muted-foreground space-y-2 pl-2">
               <p>Gunakan tombol-tombol di bagian header untuk mengelola data penting:</p>
               <ul className="list-disc pl-5 space-y-1">
-                <li><strong>Siswa:</strong> Menambah, mengedit, atau menghapus data siswa.</li>
+                <li><strong>Siswa:</strong> Menambah, mengedit, atau menghapus data siswa. Di sini juga Anda bisa mereset perangkat terdaftar siswa.</li>
                 <li><strong>Kategori:</strong> Menambah atau menghapus kategori penilaian manual.</li>
                 <li><strong>Pengguna:</strong> Mengelola akun guru yang dapat mengakses dasbor ini.</li>
                 <li><strong>Pengaturan:</strong> Mengubah nama sekolah, logo, koordinat, radius, dan jadwal presensi.</li>
@@ -84,6 +84,7 @@ export function SystemInstructions() {
                 <li>Rating manual tidak wajib diisi setiap hari. Jika tidak diisi, rata-rata harian siswa akan dihitung hanya dari poin kehadiran.</li>
                 <li>Siswa yang tidak check-in akan dianggap "Alpa" oleh sistem pada hari tersebut. Guru dapat mengubah status ini melalui menu "Presensi".</li>
                 <li>Pastikan data di menu "Pengaturan" (terutama lokasi dan jadwal) sudah sesuai untuk memastikan sistem presensi berjalan akurat.</li>
+                <li>Jika siswa mengganti perangkat, Anda perlu mereset perangkat lama melalui menu "Siswa" agar mereka bisa check-in dari perangkat baru.</li>
               </ul>
             </AccordionContent>
           </AccordionItem>
