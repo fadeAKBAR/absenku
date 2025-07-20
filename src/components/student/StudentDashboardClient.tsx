@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { format, set } from 'date-fns';
+import { format, set, startOfMonth, endOfMonth, getMonth, getYear } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User, Trophy, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +27,8 @@ import { EditProfileDialog } from './EditProfileDialog';
 import { StarRating } from '../common/StarRating';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { Calendar } from '../ui/calendar';
+import { Badge } from '../ui/badge';
 
 const statusMapping: { [key in Attendance['status']]: { text: string; color: string; icon: React.ReactNode } } = {
   present: { text: 'Hadir', color: 'text-green-600', icon: <CheckCircle className="h-5 w-5" /> },
@@ -297,6 +299,44 @@ export default function StudentDashboardClient() {
     }
     return name.substring(0, 2).toUpperCase();
   };
+  
+  const { monthlySummary, calendarModifiers } = useMemo(() => {
+    const summary = {
+        present: 0,
+        late: 0,
+        sick: 0,
+        permit: 0,
+        absent: 0,
+        no_checkout: 0
+    };
+    const modifiers: { [key: string]: Date[] } = {
+        present: [],
+        late: [],
+        sick: [],
+        permit: [],
+        absent: [],
+    };
+    const today = new Date();
+    const currentMonthAttendance = attendance.filter(a => 
+        getMonth(new Date(a.date)) === getMonth(today) &&
+        getYear(new Date(a.date)) === getYear(today)
+    );
+
+    currentMonthAttendance.forEach(att => {
+        summary[att.status]++;
+        const date = new Date(att.date);
+        // Adjust for timezone offset by creating date in UTC
+        const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+        
+        if(att.status === 'present' || att.status === 'no_checkout') {
+            modifiers.present.push(utcDate);
+        } else if (modifiers[att.status]) {
+            modifiers[att.status].push(utcDate);
+        }
+    });
+
+    return { monthlySummary: summary, calendarModifiers: modifiers };
+  }, [attendance]);
 
 
   return (
@@ -415,7 +455,7 @@ export default function StudentDashboardClient() {
             </CardContent>
           </Card>
         </div>
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-2 flex flex-col gap-8">
             <Card className="shadow-lg">
                  <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -465,11 +505,59 @@ export default function StudentDashboardClient() {
                     </ScrollArea>
                  </CardContent>
             </Card>
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <CalendarDays className="h-6 w-6 text-primary" />
+                        Rekap Kehadiran Bulan Ini
+                    </CardTitle>
+                    <CardDescription>Kalender visual kehadiran Anda bulan {format(new Date(), 'MMMM yyyy', { locale: id })}.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center">
+                    <Calendar
+                        mode="single"
+                        month={new Date()}
+                        className="rounded-md border"
+                        modifiers={calendarModifiers}
+                        modifiersClassNames={{
+                            present: 'bg-green-200 text-green-800 rounded-md',
+                            late: 'bg-orange-200 text-orange-800 rounded-md',
+                            sick: 'bg-blue-200 text-blue-800 rounded-md',
+                            permit: 'bg-yellow-200 text-yellow-800 rounded-md',
+                            absent: 'bg-red-200 text-red-800 rounded-md line-through',
+                        }}
+                    />
+                    <div className="mt-6 w-full grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-center justify-between p-2 bg-green-100 rounded-md">
+                            <span>Hadir</span>
+                            <Badge variant="secondary">{monthlySummary.present}</Badge>
+                        </div>
+                         <div className="flex items-center justify-between p-2 bg-orange-100 rounded-md">
+                            <span>Terlambat</span>
+                            <Badge variant="secondary">{monthlySummary.late}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 bg-blue-100 rounded-md">
+                            <span>Sakit</span>
+                            <Badge variant="secondary">{monthlySummary.sick}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 bg-yellow-100 rounded-md">
+                            <span>Izin</span>
+                            <Badge variant="secondary">{monthlySummary.permit}</Badge>
+                        </div>
+                         <div className="flex items-center justify-between p-2 bg-red-100 rounded-md">
+                            <span>Alpa</span>
+                            <Badge variant="secondary">{monthlySummary.absent}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 bg-gray-100 rounded-md">
+                            <span>Tdk. Checkout</span>
+                            <Badge variant="secondary">{monthlySummary.no_checkout}</Badge>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
       </main>
     </div>
     </>
   );
 }
-
-    
