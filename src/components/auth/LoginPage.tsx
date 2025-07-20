@@ -7,8 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getUsers } from '@/lib/data';
-import type { User } from '@/lib/types';
+import { getUsers, getStudents } from '@/lib/data';
+import type { User, Student } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,13 +25,15 @@ export function LoginPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
 
   useEffect(() => {
-    async function fetchUsers() {
-      const storedUsers = await getUsers();
+    async function fetchData() {
+      const [storedUsers, storedStudents] = await Promise.all([getUsers(), getStudents()]);
       setUsers(storedUsers);
+      setStudents(storedStudents);
     }
-    fetchUsers();
+    fetchData();
   }, []);
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -47,22 +49,34 @@ export function LoginPage() {
     
     setTimeout(() => {
       const user = users.find(u => u.email === values.email && u.password === values.password);
-
       if (user) {
-        localStorage.setItem('user_authenticated', JSON.stringify(user));
+        localStorage.setItem('user_authenticated', JSON.stringify({ ...user, role: 'teacher' }));
         toast({
           title: 'Login Berhasil',
           description: `Selamat datang kembali, ${user.name}!`,
         });
         router.push('/dashboard');
-      } else {
-        toast({
-          title: 'Login Gagal',
-          description: 'Email atau password salah.',
-          variant: 'destructive',
-        });
-        setIsSubmitting(false);
+        return;
       }
+
+      const student = students.find(s => s.email === values.email && s.password === values.password);
+      if (student) {
+        localStorage.setItem('user_authenticated', JSON.stringify({ ...student, role: 'student' }));
+        toast({
+          title: 'Login Berhasil',
+          description: `Selamat datang, ${student.name}!`,
+        });
+        router.push('/student/dashboard');
+        return;
+      }
+      
+      toast({
+        title: 'Login Gagal',
+        description: 'Email atau password salah.',
+        variant: 'destructive',
+      });
+      setIsSubmitting(false);
+
     }, 1000);
   };
 
@@ -98,7 +112,7 @@ export function LoginPage() {
                             <FormItem>
                                 <Label htmlFor="email">Email</Label>
                                 <FormControl>
-                                    <Input id="email" type="email" placeholder="guru@sekolah.id" {...field} />
+                                    <Input id="email" type="email" placeholder="nama@sekolah.id" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -125,7 +139,7 @@ export function LoginPage() {
             </Form>
         </CardContent>
         <CardFooter className="text-xs text-center text-muted-foreground">
-             <p>Gunakan akun yang terdaftar di sistem.</p>
+             <p>Gunakan akun guru atau siswa yang terdaftar.</p>
         </CardFooter>
     </Card>
   );

@@ -28,7 +28,7 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 
 
 type MonthlyAttendanceRecapProps = {
@@ -49,28 +49,12 @@ type StudentMonthlyRecap = {
   totalDays: number;
 };
 
-const statusColors = {
-    present: 'hsl(var(--chart-1))',
-    late: 'hsl(var(--chart-2))',
-    sick: 'hsl(var(--chart-3))',
-    permit: 'hsl(var(--chart-4))',
-    absent: 'hsl(var(--chart-5))',
-}
-
-const statusLabels: { [key in Attendance['status']]: string } = {
-    present: 'Hadir',
-    late: 'Terlambat',
-    sick: 'Sakit',
-    permit: 'Izin',
-    absent: 'Alpa'
-}
-
 const chartConfig = {
-    Hadir: { label: 'Hadir', color: 'hsl(var(--chart-1))' },
-    Terlambat: { label: 'Terlambat', color: 'hsl(var(--chart-2))' },
-    Sakit: { label: 'Sakit', color: 'hsl(var(--chart-3))' },
-    Izin: { label: 'Izin', color: 'hsl(var(--chart-4))' },
-    Alpa: { label: 'Alpa', color: 'hsl(var(--chart-5))' },
+    Hadir: { label: 'Hadir', color: 'hsl(142.1 76.2% 42.2%)' }, // green-600
+    Terlambat: { label: 'Terlambat', color: 'hsl(35.5 85.8% 52.9%)' }, // orange-500
+    Sakit: { label: 'Sakit', color: 'hsl(221.2 83.2% 53.3%)' }, // blue-600
+    Izin: { label: 'Izin', color: 'hsl(47.9 95.8% 53.1%)' }, // yellow-500
+    Alpa: { label: 'Alpa', color: 'hsl(0 84.2% 60.2%)' }, // red-600
 } satisfies ChartConfig;
 
 
@@ -136,7 +120,7 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
       Sakit: s.sick,
       Izin: s.permit,
       Alpa: s.absent
-  }));
+  })).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -157,8 +141,8 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
           </Button>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <div className="xl:col-span-2">
+        <div className="mt-4 grid grid-cols-1 xl:grid-cols-5 gap-8">
+            <div className="xl:col-span-3">
                 <h3 className="font-semibold mb-4 text-center">Grafik Kehadiran Siswa</h3>
                  <div className="h-96 w-full">
                     <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
@@ -167,24 +151,22 @@ export function MonthlyAttendanceRecap({ isOpen, onOpenChange, students, attenda
                                 data={chartData}
                                 layout="vertical"
                                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                barCategoryGap={5}
                             >
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis type="number" />
                                 <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                                <Tooltip content={<ChartTooltipContent />} />
-                                <Legend />
-                                <Bar dataKey="Hadir" stackId="a" fill={statusColors.present} radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="Terlambat" stackId="a" fill={statusColors.late} />
-                                <Bar dataKey="Sakit" stackId="a" fill={statusColors.sick} />
-                                <Bar dataKey="Izin" stackId="a" fill={statusColors.permit} />
-                                <Bar dataKey="Alpa" stackId="a" fill={statusColors.absent} radius={[0, 0, 4, 4]} />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                {Object.keys(chartConfig).map((key) => (
+                                    <Bar key={key} dataKey={key} stackId="a" fill={chartConfig[key as keyof typeof chartConfig].color} radius={[4, 4, 0, 0]} />
+                                ))}
                             </BarChart>
                         </ResponsiveContainer>
                     </ChartContainer>
                 </div>
             </div>
 
-            <div>
+            <div className="xl:col-span-2">
                 <h3 className="font-semibold mb-4">Tabel Rekapitulasi</h3>
                 <ScrollArea className="h-[400px] border rounded-md">
                     <Table>

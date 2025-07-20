@@ -83,12 +83,14 @@ export const getStudents = async (): Promise<Student[]> => {
   return [...students].sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const addStudent = async (data: { name: string; photoUrl?: string }): Promise<Student> => {
+export const addStudent = async (data: Omit<Student, 'id' | 'createdAt'>): Promise<Student> => {
   await simulateDelay(200);
+  if (students.some(s => s.email === data.email)) {
+    throw new Error("Email siswa sudah terdaftar.");
+  }
   const newStudent: Student = {
     id: String(Date.now()),
-    name: data.name,
-    photoUrl: data.photoUrl,
+    ...data,
     createdAt: Date.now(),
   };
   students.push(newStudent);
@@ -96,14 +98,22 @@ export const addStudent = async (data: { name: string; photoUrl?: string }): Pro
   return newStudent;
 };
 
-export const updateStudent = async (id: string, data: { name: string; photoUrl?: string }): Promise<Student> => {
+export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt'>>): Promise<Student> => {
     await simulateDelay(200);
     let studentToUpdate = students.find(s => s.id === id);
     if (!studentToUpdate) {
-        throw new Error("Student not found");
+        throw new Error("Siswa tidak ditemukan");
     }
-    studentToUpdate.name = data.name;
-    studentToUpdate.photoUrl = data.photoUrl;
+
+    if (data.email && students.some(s => s.email === data.email && s.id !== id)) {
+        throw new Error("Email siswa sudah terdaftar.");
+    }
+
+    Object.assign(studentToUpdate, data);
+    if (!data.password) {
+        delete studentToUpdate.password;
+    }
+
     saveToLocalStorage('app_students', students);
     return studentToUpdate;
 }
@@ -182,9 +192,12 @@ export const getAttendance = async (): Promise<Attendance[]> => {
   return [...attendance];
 }
 
-export const saveAttendance = async (date: string, records: { [studentId: string]: 'present' | 'absent' | 'sick' | 'permit' | 'late' }): Promise<void> => {
-  await simulateDelay(300);
-  Object.entries(records).forEach(([studentId, status]) => {
+export const getAttendanceForStudent = async(studentId: string): Promise<Attendance[]> => {
+  await simulateDelay(50);
+  return attendance.filter(a => a.studentId === studentId);
+}
+
+const saveAttendanceRecord = (studentId: string, date: string, status: Attendance['status']) => {
     const existingIndex = attendance.findIndex(a => a.studentId === studentId && a.date === date);
     const newRecord: Attendance = {
       id: `${studentId}-${date}`,
@@ -194,10 +207,28 @@ export const saveAttendance = async (date: string, records: { [studentId: string
       createdAt: Date.now(),
     };
     if (existingIndex > -1) {
-      attendance[existingIndex] = newRecord;
+      // Prevent student from overwriting a status set by a teacher (e.g., sick, permit)
+      // Only allow overwriting if it's currently 'absent' or if student is marking 'present'.
+      const currentStatus = attendance[existingIndex].status;
+      if (currentStatus === 'absent' || status === 'present') {
+        attendance[existingIndex] = newRecord;
+      }
     } else {
       attendance.push(newRecord);
     }
+}
+
+export const saveAttendanceForStudent = async (studentId: string, date: string, status: 'present' | 'late'): Promise<void> => {
+  await simulateDelay(300);
+  saveAttendanceRecord(studentId, date, status);
+  saveToLocalStorage('app_attendance', attendance);
+}
+
+
+export const saveAttendance = async (date: string, records: { [studentId: string]: Attendance['status'] }): Promise<void> => {
+  await simulateDelay(300);
+  Object.entries(records).forEach(([studentId, status]) => {
+     saveAttendanceRecord(studentId, date, status);
   });
   saveToLocalStorage('app_attendance', attendance);
 }

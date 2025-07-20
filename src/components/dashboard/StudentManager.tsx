@@ -17,7 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +26,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const studentSchema = z.object({
   name: z.string().min(3, "Nama siswa minimal 3 karakter."),
+  email: z.string().email("Format email tidak valid."),
+  password: z.string().min(6, "Password minimal 6 karakter.").optional(),
   photoUrl: z.string().optional(),
 });
 
@@ -45,7 +46,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
 
   const form = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
-    defaultValues: { name: "", photoUrl: "" },
+    defaultValues: { name: "", email: "", password: "", photoUrl: "" },
   });
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,29 +62,39 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
 
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
-    form.reset({ name: student.name, photoUrl: student.photoUrl });
+    form.reset({ name: student.name, email: student.email, password: "", photoUrl: student.photoUrl });
   };
 
   const handleCancelEdit = () => {
     setEditingStudent(null);
-    form.reset({ name: "", photoUrl: "" });
+    form.reset({ name: "", email: "", password: "", photoUrl: "" });
   };
 
   async function onSubmit(values: z.infer<typeof studentSchema>) {
+    if (!editingStudent && !values.password) {
+        form.setError("password", { message: "Password wajib diisi untuk siswa baru."});
+        return;
+    }
+
     setIsSubmitting(true);
     try {
       if (editingStudent) {
-        await updateStudent(editingStudent.id, values);
+        await updateStudent(editingStudent.id, {
+            name: values.name,
+            email: values.email,
+            password: values.password,
+            photoUrl: values.photoUrl
+        });
         toast({ title: "Sukses", description: "Data siswa telah diperbarui." });
       } else {
-        await addStudent(values);
+        await addStudent(values as z.infer<typeof studentSchema> & { password: string });
         toast({ title: "Sukses", description: "Siswa baru telah ditambahkan." });
       }
-      form.reset({ name: "", photoUrl: "" });
+      form.reset({ name: "", email: "", password: "", photoUrl: "" });
       setEditingStudent(null);
       onUpdate();
-    } catch (error) {
-      toast({ title: "Error", description: "Gagal menyimpan data siswa.", variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Gagal menyimpan data siswa.", variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -147,6 +158,32 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email Siswa</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="budi.hartono@sekolah.id" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder={editingStudent ? "Isi untuk mengubah" : "******"} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DialogFooter className="pt-4">
                 {editingStudent && (
                     <Button type="button" variant="ghost" onClick={handleCancelEdit}>Batal</Button>
@@ -170,7 +207,10 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                         <AvatarImage src={student.photoUrl} alt={student.name} />
                         <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span>{student.name}</span>
+                      <div className="text-sm">
+                        <p className="font-medium">{student.name}</p>
+                        <p className="text-muted-foreground">{student.email}</p>
+                      </div>
                    </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(student)}>
