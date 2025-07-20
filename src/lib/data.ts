@@ -31,7 +31,12 @@ let settings: AppSettings = {
     },
     checkInRadius: 50,
     lateTime: "07:00",
-    checkOutTime: "15:30"
+    checkOutTime: "15:30",
+    messageTemplates: {
+        attendance: "Yth. Bapak/Ibu Wali dari siswa {namaSiswa}, kami informasikan ananda telah *{statusKehadiran}* di sekolah hari ini, {tanggal}, pada pukul *{waktuCheckIn}*. Terima kasih.",
+        absence: "Yth. Bapak/Ibu Wali dari siswa {namaSiswa}, kami informasikan bahwa ananda tercatat *ALPA* pada hari ini, {tanggal}. Mohon konfirmasinya. Terima kasih.",
+        recap: "Yth. Bapak/Ibu Wali dari siswa {namaSiswa}, kami informasikan rekap poin mingguan ananda:\n\nRata-rata Rating: *{rataRata}*\nTotal Poin Tambahan: *{totalPoin}*\n\nTerima kasih."
+    }
 }
 
 const ATTENDANCE_CATEGORY_ID = "kehadiran-sistem";

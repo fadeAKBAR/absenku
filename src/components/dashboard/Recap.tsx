@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { Download, BarChart2, MessageSquare } from 'lucide-react';
 import { startOfWeek, startOfMonth, format } from 'date-fns';
-import type { Student, Category, Rating, RecapData, Attendance, Position, PointRecord } from '@/lib/types';
+import type { Student, Category, Rating, RecapData, Attendance, Position, PointRecord, AppSettings } from '@/lib/types';
 import { exportToCsv } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ type RecapProps = {
   attendance: Attendance[];
   positions: Position[];
   pointRecords: PointRecord[];
+  settings: AppSettings;
 };
 
 const getStudentInitials = (name: string) => {
@@ -35,7 +36,7 @@ const getStudentInitials = (name: string) => {
     return name.substring(0, 2).toUpperCase();
 };
 
-export function Recap({ students, categories, ratings, attendance, positions, pointRecords }: RecapProps) {
+export function Recap({ students, categories, ratings, attendance, positions, pointRecords, settings }: RecapProps) {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'all-time'>('weekly');
   const { toast } = useToast();
 
@@ -151,6 +152,7 @@ export function Recap({ students, categories, ratings, attendance, positions, po
     const todayFormatted = format(new Date(), 'eeee, dd MMMM yyyy', { locale: id });
 
     let message: string;
+    const { messageTemplates } = settings;
 
     if (todayAttendance) {
       const statusText = todayAttendance.status === 'present' 
@@ -160,17 +162,27 @@ export function Recap({ students, categories, ratings, attendance, positions, po
         : todayAttendance.status.toUpperCase();
 
       if (todayAttendance.status === 'absent') {
-          message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan bahwa ananda tercatat *ALPA* pada hari ini, ${todayFormatted}. Mohon konfirmasinya. Terima kasih.`;
+          message = messageTemplates.absence
+            .replace('{namaSiswa}', student.studentName)
+            .replace('{tanggal}', todayFormatted);
       } else if (todayAttendance.checkIn) {
           const checkInTime = format(new Date(todayAttendance.checkIn), 'HH:mm');
-          message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan ananda telah *${statusText}* di sekolah hari ini, ${todayFormatted}, pada pukul *${checkInTime}*. Terima kasih.`;
+          message = messageTemplates.attendance
+            .replace('{namaSiswa}', student.studentName)
+            .replace('{statusKehadiran}', statusText)
+            .replace('{tanggal}', todayFormatted)
+            .replace('{waktuCheckIn}', checkInTime);
       } else {
          // Case for sick or permit without check-in time
           message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan ananda hari ini berstatus *${statusText}* pada tanggal ${todayFormatted}. Terima kasih.`;
       }
     } else {
         // Fallback to weekly recap if no attendance record for today
-        message = `Yth. Bapak/Ibu Wali dari siswa ${student.studentName}, kami informasikan rekap poin mingguan ananda:\n\nRata-rata Rating: *${student.overallAverage.toFixed(2)}*\nTotal Poin Tambahan: *${student.totalPoints > 0 ? '+' : ''}${student.totalPoints}*\n\nTerima kasih.`;
+        const totalPointsString = student.totalPoints > 0 ? `+${student.totalPoints}`: String(student.totalPoints);
+        message = messageTemplates.recap
+          .replace('{namaSiswa}', student.studentName)
+          .replace('{rataRata}', student.overallAverage.toFixed(2))
+          .replace('{totalPoin}', totalPointsString);
     }
     
     const encodedMessage = encodeURIComponent(message);
@@ -300,5 +312,3 @@ export function Recap({ students, categories, ratings, attendance, positions, po
     </Card>
   );
 }
-
-    

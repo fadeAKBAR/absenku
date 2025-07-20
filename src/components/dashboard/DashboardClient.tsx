@@ -185,6 +185,7 @@ export default function DashboardClient() {
               attendance={attendance}
               positions={positions}
               pointRecords={pointRecords}
+              settings={settings}
             />
             <SystemInstructions />
           </div>

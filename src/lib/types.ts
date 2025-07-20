@@ -90,6 +90,11 @@ export interface AppSettings {
     checkInRadius: number; // in meters
     lateTime: string; // HH:mm
     checkOutTime: string; // HH:mm
+    messageTemplates: {
+        attendance: string;
+        absence: string;
+        recap: string;
+    };
 }
 
 export type ChartConfig = {

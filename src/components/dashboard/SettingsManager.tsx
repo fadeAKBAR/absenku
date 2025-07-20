@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Save, Building, Map, Clock } from 'lucide-react';
+import { Save, Building, Map, Clock, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { AppSettings } from '@/lib/types';
 import { saveSettings } from '@/lib/data';
@@ -21,8 +21,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '../ui/textarea';
 
 
 const settingsSchema = z.object({
@@ -35,6 +36,11 @@ const settingsSchema = z.object({
   checkInRadius: z.coerce.number().min(10, "Radius minimal 10 meter.").max(1000, "Radius maksimal 1000 meter."),
   lateTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format waktu harus HH:MM"),
   checkOutTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format waktu harus HH:MM"),
+  messageTemplates: z.object({
+      attendance: z.string().min(10, "Template tidak boleh kosong."),
+      absence: z.string().min(10, "Template tidak boleh kosong."),
+      recap: z.string().min(10, "Template tidak boleh kosong."),
+  }),
 });
 
 
@@ -76,7 +82,7 @@ export function SettingsManager({ isOpen, onOpenChange, settings, onUpdate }: Se
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Pengaturan Aplikasi</DialogTitle>
           <DialogDescription>Kelola pengaturan umum, presensi, dan data penting lainnya untuk aplikasi ini.</DialogDescription>
@@ -85,10 +91,11 @@ export function SettingsManager({ isOpen, onOpenChange, settings, onUpdate }: Se
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
                 <Tabs defaultValue="general" className="w-full mt-4">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="general">Umum</TabsTrigger>
                         <TabsTrigger value="location">Lokasi</TabsTrigger>
                         <TabsTrigger value="attendance">Presensi</TabsTrigger>
+                        <TabsTrigger value="messages">Pesan</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="general" className="space-y-4 pt-4">
@@ -206,6 +213,58 @@ export function SettingsManager({ isOpen, onOpenChange, settings, onUpdate }: Se
                                         <FormControl>
                                             <Input placeholder="15:30" {...field} />
                                         </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    
+                     <TabsContent value="messages" className="space-y-4 pt-4">
+                         <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-lg"><MessageSquare className="h-5 w-5"/>Template Pesan WhatsApp</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                               <FormField
+                                    control={form.control}
+                                    name="messageTemplates.attendance"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Notifikasi Kehadiran</FormLabel>
+                                        <FormControl>
+                                            <Textarea rows={4} {...field} />
+                                        </FormControl>
+                                        <FormDescription>Placeholder: {"{namaSiswa}, {statusKehadiran}, {waktuCheckIn}, {tanggal}"}</FormDescription>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="messageTemplates.absence"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Notifikasi Alpa</FormLabel>
+                                        <FormControl>
+                                            <Textarea rows={3} {...field} />
+                                        </FormControl>
+                                         <FormDescription>Placeholder: {"{namaSiswa}, {tanggal}"}</FormDescription>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={form.control}
+                                    name="messageTemplates.recap"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Notifikasi Rekap Mingguan (Fallback)</FormLabel>
+                                        <FormControl>
+                                            <Textarea rows={4} {...field} />
+                                        </FormControl>
+                                         <FormDescription>Placeholder: {"{namaSiswa}, {rataRata}, {totalPoin}"}</FormDescription>
                                         <FormMessage />
                                         </FormItem>
                                     )}
