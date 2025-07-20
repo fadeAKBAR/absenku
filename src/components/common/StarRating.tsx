@@ -44,7 +44,7 @@ export function StarRating({ count = 5, rating, onRatingChange, size = 24 }: Sta
               size={size}
               className={cn(
                 'cursor-pointer',
-                ratingValue <= (hoverRating || rating) ? 'text-accent' : 'text-gray-300'
+                ratingValue <= (hoverRating || rating) ? 'text-yellow-400' : 'text-gray-300'
               )}
               fill={ratingValue <= (hoverRating || rating) ? 'currentColor' : 'transparent'}
             />
