@@ -84,7 +84,7 @@ export default function StudentDashboardClient() {
     }
   }, [toast, todayString]);
 
-  const loadStudentFromStorage = () => {
+  const loadStudentFromStorage = useCallback(() => {
      try {
       const userString = localStorage.getItem('user_authenticated');
       if (userString) {
@@ -101,17 +101,87 @@ export default function StudentDashboardClient() {
     } catch (e) {
       router.replace('/');
     }
-  }
+  }, [router, fetchData]);
 
   useEffect(() => {
     loadStudentFromStorage();
-  }, [router, fetchData]);
+  }, [loadStudentFromStorage]);
   
   useEffect(() => {
     const interval = setInterval(checkCanCheckOut, 1000 * 30); // Check every 30 seconds
     checkCanCheckOut();
     return () => clearInterval(interval);
   }, [checkCanCheckOut]);
+
+  const myWeeklyData = useMemo(() => {
+    if (!student) return null;
+    const data = leaderboard.find(s => s.studentId === student.id);
+    if (!data) return null;
+    const rank = leaderboard.findIndex(s => s.studentId === student.id) + 1;
+    return { ...data, rank };
+  }, [leaderboard, student]);
+  
+  const { monthlySummary, calendarModifiers } = useMemo(() => {
+    const summary = {
+        present: 0,
+        late: 0,
+        sick: 0,
+        permit: 0,
+        absent: 0,
+        no_checkout: 0
+    };
+    const modifiers: { [key: string]: Date[] } = {
+        present: [],
+        late: [],
+        sick: [],
+        permit: [],
+        absent: [],
+    };
+    const today = new Date();
+    const currentMonthAttendance = attendance.filter(a => 
+        getMonth(new Date(a.date)) === getMonth(today) &&
+        getYear(new Date(a.date)) === getYear(today)
+    );
+
+    currentMonthAttendance.forEach(att => {
+        summary[att.status]++;
+        const date = new Date(att.date);
+        // Adjust for timezone offset by creating date in UTC
+        const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+        
+        if(att.status === 'present' || att.status === 'no_checkout') {
+            modifiers.present.push(utcDate);
+        } else if (modifiers[att.status]) {
+            modifiers[att.status].push(utcDate);
+        }
+    });
+
+    return { monthlySummary: summary, calendarModifiers: modifiers };
+  }, [attendance]);
+
+  if (!student || !settings) {
+    return <div className="flex items-center justify-center min-h-screen">Mengarahkan...</div>;
+  }
+  
+  const getGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Selamat Pagi';
+      if (hour < 15) return 'Selamat Siang';
+      if (hour < 18) return 'Selamat Sore';
+      return 'Selamat Malam';
+  }
+  
+  const handleAbsenceReported = () => {
+    if(student) {
+      fetchData(student.id);
+    }
+  }
+
+  const handleProfileUpdate = (updatedStudent: Student) => {
+    setStudent(updatedStudent);
+    localStorage.setItem('user_authenticated', JSON.stringify({ ...updatedStudent, role: 'student'}));
+    toast({ title: "Sukses", description: "Profil Anda berhasil diperbarui." });
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('user_authenticated');
@@ -194,39 +264,6 @@ export default function StudentDashboardClient() {
     }
   }
 
-  const myWeeklyData = useMemo(() => {
-    if (!student) return null;
-    const data = leaderboard.find(s => s.studentId === student.id);
-    if (!data) return null;
-    const rank = leaderboard.findIndex(s => s.studentId === student.id) + 1;
-    return { ...data, rank };
-  }, [leaderboard, student]);
-
-
-  if (!student || !settings) {
-    return <div className="flex items-center justify-center min-h-screen">Mengarahkan...</div>;
-  }
-  
-  const getGreeting = () => {
-      const hour = new Date().getHours();
-      if (hour < 12) return 'Selamat Pagi';
-      if (hour < 15) return 'Selamat Siang';
-      if (hour < 18) return 'Selamat Sore';
-      return 'Selamat Malam';
-  }
-  
-  const handleAbsenceReported = () => {
-    if(student) {
-      fetchData(student.id);
-    }
-  }
-
-  const handleProfileUpdate = (updatedStudent: Student) => {
-    setStudent(updatedStudent);
-    localStorage.setItem('user_authenticated', JSON.stringify({ ...updatedStudent, role: 'student'}));
-    toast({ title: "Sukses", description: "Profil Anda berhasil diperbarui." });
-  }
-
   const renderAttendanceCard = () => {
     // Already checked in or reported sick/permit
     if (todayAttendance) {
@@ -299,45 +336,6 @@ export default function StudentDashboardClient() {
     }
     return name.substring(0, 2).toUpperCase();
   };
-  
-  const { monthlySummary, calendarModifiers } = useMemo(() => {
-    const summary = {
-        present: 0,
-        late: 0,
-        sick: 0,
-        permit: 0,
-        absent: 0,
-        no_checkout: 0
-    };
-    const modifiers: { [key: string]: Date[] } = {
-        present: [],
-        late: [],
-        sick: [],
-        permit: [],
-        absent: [],
-    };
-    const today = new Date();
-    const currentMonthAttendance = attendance.filter(a => 
-        getMonth(new Date(a.date)) === getMonth(today) &&
-        getYear(new Date(a.date)) === getYear(today)
-    );
-
-    currentMonthAttendance.forEach(att => {
-        summary[att.status]++;
-        const date = new Date(att.date);
-        // Adjust for timezone offset by creating date in UTC
-        const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-        
-        if(att.status === 'present' || att.status === 'no_checkout') {
-            modifiers.present.push(utcDate);
-        } else if (modifiers[att.status]) {
-            modifiers[att.status].push(utcDate);
-        }
-    });
-
-    return { monthlySummary: summary, calendarModifiers: modifiers };
-  }, [attendance]);
-
 
   return (
     <>
@@ -561,3 +559,5 @@ export default function StudentDashboardClient() {
     </>
   );
 }
+
+    
