@@ -26,8 +26,8 @@ let settings: AppSettings = {
     schoolName: "SMKN 3 SOPPENG",
     schoolLogoUrl: "https://www.smkn3soppeng.sch.id/media_library/images/355dfdca525613f8b5e873ec18c6a658.png",
     location: {
-        latitude: -4.329808,
-        longitude: 120.028856,
+        latitude: -4.375254638902236,
+        longitude: 119.95042838650735,
     },
     checkInRadius: 50,
     lateTime: "07:00",
