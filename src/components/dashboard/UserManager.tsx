@@ -72,7 +72,7 @@ export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManag
           await updateUser(editingUser.id, {
             name: values.name,
             email: values.email,
-            password: values.password,
+            password: values.password || undefined, // Send undefined if empty
           });
           toast({ title: "Sukses", description: "Data pengguna telah diperbarui." });
       } else {

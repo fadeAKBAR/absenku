@@ -91,13 +91,13 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
         address: student.address,
         phone: student.phone,
         parentPhone: student.parentPhone,
-        positionId: student.positionId || undefined
+        positionId: student.positionId || NO_POSITION_VALUE
     });
   };
 
   const handleCancelEdit = () => {
     setEditingStudent(null);
-    form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" });
+    form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "", positionId: NO_POSITION_VALUE });
   };
 
   async function onSubmit(values: z.infer<typeof studentSchema>) {
@@ -120,8 +120,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
         await addStudent(studentData as z.infer<typeof studentSchema> & { password: string });
         toast({ title: "Sukses", description: "Siswa baru telah ditambahkan." });
       }
-      form.reset({ name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "" });
-      setEditingStudent(null);
+      handleCancelEdit();
       onUpdate();
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Gagal menyimpan data siswa.", variant: 'destructive' });
@@ -211,7 +210,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="flex items-center gap-2"><Award className="h-4 w-4"/> Jabatan</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || NO_POSITION_VALUE} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || NO_POSITION_VALUE}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih jabatan" />
@@ -350,3 +349,4 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
     </Dialog>
   );
 }
+

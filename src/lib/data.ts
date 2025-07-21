@@ -148,15 +148,23 @@ export const updateUser = async (id: string, data: Partial<Omit<User, 'id'|'crea
         throw new Error("Pengguna tidak ditemukan");
     }
 
-    Object.assign(userToUpdate, data);
-     if (data.password && data.password.trim() === "") {
-        delete userToUpdate.password;
-    } else if (data.password) {
-        userToUpdate.password = data.password;
+    const updatedData = { ...userToUpdate, ...data };
+    
+    // Only update password if a new, non-empty password is provided
+    if (data.password && data.password.trim() !== "") {
+        updatedData.password = data.password;
+    } else {
+        // Otherwise, keep the existing password
+        updatedData.password = userToUpdate.password;
+    }
+
+    const userIndex = users.findIndex(u => u.id === id);
+    if(userIndex > -1) {
+        users[userIndex] = updatedData;
     }
 
     saveToLocalStorage('app_users', users);
-    return userToUpdate;
+    return updatedData;
 }
 
 
@@ -188,7 +196,7 @@ export const addStudent = async (data: Omit<Student, 'id' | 'createdAt'>): Promi
   return newStudent;
 };
 
-export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt' | 'password'>> & { password?: string, oldPassword?: string }): Promise<Student> => {
+export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt'>>): Promise<Student> => {
     await simulateDelay(200);
     let studentToUpdate = students.find(s => s.id === id);
     if (!studentToUpdate) {
@@ -598,3 +606,4 @@ export const getWeeklyLeaderboard = async(): Promise<RecapData[]> => {
     
     return weeklyRecap;
 }
+
