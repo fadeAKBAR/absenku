@@ -21,63 +21,62 @@ Aplikasi ini berjalan sepenuhnya di sisi klien (browser) dan menggunakan **Local
 - **Manajemen Form:** React Hook Form, Zod
 - **Visualisasi Data:** Recharts
 - **Penyimpanan Data:** Local Storage (Sisi Klien)
-- **Deployment:** GitHub Actions & GitHub Pages
+- **Deployment:** GitHub Pages (Deploy from branch)
 
 ---
 
-## 1. Menjalankan Proyek Secara Lokal
+## Cara Menjalankan & Mempublikasikan Proyek
 
-Ikuti langkah-langkah di bawah ini untuk menjalankan aplikasi di komputer lokal Anda.
+Ikuti langkah-langkah di bawah ini untuk menjalankan dan mempublikasikan aplikasi Anda di GitHub Pages.
 
-### Prasyarat
-
-Pastikan Anda telah menginstal perangkat lunak berikut di sistem Anda:
-- [Node.js](https://nodejs.org/) (versi 18 atau lebih baru direkomendasikan)
-- [Git](https://git-scm.com/downloads)
-
-### Langkah-langkah Instalasi
+### Langkah 1: Persiapan di Komputer Lokal
 
 1.  **Kloning Repositori**
-    Buka terminal Anda dan jalankan perintah berikut (ganti dengan URL repositori Anda):
+    Buka terminal Anda dan jalankan perintah berikut setelah Anda membuat repositori baru di GitHub:
     ```bash
     git clone https://[URL_REPOSITORI_GITHUB_ANDA].git
     cd [NAMA_FOLDER_PROYEK]
     ```
 
-2.  **Instalasi Dependensi**
+2.  **Install Dependensi**
     Install semua library yang dibutuhkan oleh proyek:
     ```bash
     npm install
     ```
 
-3.  **Menjalankan Aplikasi**
-    Setelah semua langkah di atas selesai, Anda dapat menjalankan server pengembangan lokal:
+3.  **Menjalankan Server Pengembangan**
+    Untuk menjalankan aplikasi di komputer lokal Anda (`http://localhost:9002`):
     ```bash
     npm run dev
     ```
-    Aplikasi akan berjalan dan dapat diakses di `http://localhost:9002`.
 
----
+### Langkah 2: Proses Build untuk Produksi
 
-## 2. Mempublikasikan Proyek di GitHub Pages (Hosting Gratis)
+Setiap kali Anda selesai melakukan perubahan dan siap untuk mempublikasikannya, jalankan perintah ini di terminal Anda:
 
-Proyek ini sudah dikonfigurasi untuk dapat di-hosting secara gratis menggunakan GitHub Pages. Proses deployment terjadi secara otomatis setiap kali Anda melakukan `push` ke branch `main`.
+```bash
+npm run build
+```
+Perintah ini akan membuat atau memperbarui folder bernama `docs` di proyek Anda. Folder ini berisi versi statis dari aplikasi Anda yang siap untuk diunggah.
 
-### Langkah-langkah Deployment
+### Langkah 3: Unggah ke GitHub
 
-1.  **Unggah Proyek ke GitHub**
-    Ikuti langkah-langkah di atas untuk menjalankan proyek secara lokal, lalu unggah kode Anda ke repositori GitHub baru.
+Setelah menjalankan `npm run build`, unggah semua perubahan Anda ke GitHub:
 
-2.  **Aktifkan GitHub Pages (PENTING! Hanya dilakukan sekali)**
-    - Buka repositori Anda di GitHub.
-    - Klik tab "**Settings**".
-    - Di menu sebelah kiri, klik "**Pages**".
-    - Di bawah bagian "Build and deployment", temukan opsi "**Source**".
-    - **Ubah pilihan dari "Deploy from a branch" menjadi "GitHub Actions"**.
-    
-    Langkah ini krusial agar GitHub Pages menampilkan aplikasi yang sudah di-build, bukan hanya file `README.md`.
+```bash
+git add .
+git commit -m "Deskripsi perubahan Anda"
+git push origin main
+```
+**Penting:** Folder `docs` sengaja tidak diunggah ke GitHub berkat file `.gitignore`. Proses build hanya perlu dilakukan di komputer lokal Anda sebelum push.
 
-3.  **Lakukan Push ke Branch `main`**
-    Setiap kali Anda melakukan `git push` ke branch `main`, GitHub Actions akan secara otomatis membangun aplikasi Anda dan men-deploy-nya. Anda dapat melihat progresnya di tab "**Actions**" pada repositori Anda.
+### Langkah 4: Konfigurasi GitHub Pages (Hanya Dilakukan Sekali)
 
-Setelah proses deployment pertama selesai, aplikasi Anda akan aktif dan dapat diakses di URL seperti `https://<NAMA_PENGGUNA_ANDA>.github.io/<NAMA_REPOSITORI_ANDA>/`.
+1.  Buka repositori Anda di GitHub.
+2.  Klik tab "**Settings**".
+3.  Di menu sebelah kiri, klik "**Pages**".
+4.  Di bawah bagian "Build and deployment", ubah **Source** menjadi **"Deploy from a branch"**.
+5.  Di bawahnya, pada bagian **Branch**, pilih branch `main` dan folder `/(root)`.
+6.  Klik **Save**.
+
+Tunggu beberapa menit hingga proses deployment selesai. Aplikasi Anda akan aktif dan dapat diakses di URL seperti `https://<NAMA_PENGGUNA_ANDA>.github.io/<NAMA_REPOSITORI_ANDA>/`. Setiap kali Anda melakukan `push` setelah ini, situs akan diperbarui secara otomatis.
