@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { SystemInstructions } from './SystemInstructions';
 import { PositionManager } from './PositionManager';
 import { PointRecorder } from './PointRecorder';
+import { StudentAnalysis } from './StudentAnalysis';
 
 export default function DashboardClient() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -164,6 +165,13 @@ export default function DashboardClient() {
                   Rekap Bulanan
                 </Button>
             </div>
+            <StudentAnalysis
+                students={students}
+                ratings={ratings}
+                attendance={attendance}
+                pointRecords={pointRecords}
+                categories={categories}
+            />
             <PointRecorder 
                 students={students} 
                 onPointRecorded={handleDataUpdate}
