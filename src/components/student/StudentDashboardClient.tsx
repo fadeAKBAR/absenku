@@ -472,7 +472,7 @@ export default function StudentDashboardClient() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="font-bold text-primary">{s.overallAverage.toFixed(2)}</span>
-                                <StarRating rating={Math.round(s.overallAverage)} onRatingChange={() => {}} size={16} />
+                                <StarRating rating={Math.round(s.overallAverage)} onRatingChange={() => {}} size={16} disabled={true}/>
                             </div>
                         </li>
                     )) : (

@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
 import { Label } from '../ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 const profileSchema = z.object({
   password: z.string().min(6, "Password minimal 6 karakter.").optional().or(z.literal('')),
@@ -51,6 +52,7 @@ export function EditProfileDialog({ isOpen, onOpenChange, student, onUpdate }: E
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -87,7 +89,7 @@ export function EditProfileDialog({ isOpen, onOpenChange, student, onUpdate }: E
       onUpdate(updatedStudent);
       onOpenChange(false);
     } catch (error) {
-      // toast({ title: "Error", description: "Gagal memperbarui profil.", variant: 'destructive' });
+      toast({ title: "Error", description: "Gagal memperbarui profil.", variant: 'destructive' });
       console.error(error);
     } finally {
       setIsSubmitting(false);
