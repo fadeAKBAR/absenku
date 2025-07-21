@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import { format, set, startOfMonth, endOfMonth, getMonth, getYear } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { LogOut, CheckCircle, Clock, CalendarDays, History, XCircle, LogIn, AlertTriangle, Coffee, Loader2, MapPin, Edit, User, Trophy, Star, Award, ShieldAlert, FileText, TrendingUp } from 'lucide-react';
@@ -40,8 +39,11 @@ const statusMapping: { [key in Attendance['status']]: { text: string; color: str
   no_checkout: { text: 'Tidak Check Out', color: 'text-gray-600', icon: <AlertTriangle className="h-5 w-5" /> },
 };
 
+type StudentDashboardClientProps = {
+  onLogout: () => void;
+}
 
-export default function StudentDashboardClient() {
+export default function StudentDashboardClient({ onLogout }: StudentDashboardClientProps) {
   const [student, setStudent] = useState<Student | null>(null);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
@@ -56,8 +58,6 @@ export default function StudentDashboardClient() {
   const [canCheckOut, setCanCheckOut] = useState(false);
   const [isReportAbsenceOpen, setReportAbsenceOpen] = useState(false);
   const [isEditProfileOpen, setEditProfileOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
 
   const todayString = format(new Date(), 'yyyy-MM-dd');
@@ -92,12 +92,6 @@ export default function StudentDashboardClient() {
   }, [toast, todayString]);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-
     try {
       const userString = localStorage.getItem('user_authenticated');
       if (userString) {
@@ -106,15 +100,15 @@ export default function StudentDashboardClient() {
           setStudent(userData);
           fetchData(userData.id);
         } else {
-          router.replace('/dashboard');
+          onLogout();
         }
       } else {
-        router.replace('/');
+        onLogout();
       }
     } catch (e) {
-      router.replace('/');
+      onLogout();
     }
-  }, [isMounted, router, fetchData]);
+  }, [onLogout, fetchData]);
   
   useEffect(() => {
     const interval = setInterval(checkCanCheckOut, 1000 * 30); // Check every 30 seconds
@@ -171,7 +165,6 @@ export default function StudentDashboardClient() {
   // --- END OF HOOKS ---
 
   const getGreeting = () => {
-      if (!isMounted) return 'Selamat Datang';
       const hour = new Date().getHours();
       if (hour < 12) return 'Selamat Pagi';
       if (hour < 15) return 'Selamat Siang';
@@ -193,7 +186,7 @@ export default function StudentDashboardClient() {
 
   const handleLogout = () => {
     localStorage.removeItem('user_authenticated');
-    router.push('/');
+    onLogout();
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -252,13 +245,11 @@ export default function StudentDashboardClient() {
         try {
             await checkInStudent(student.id, new Date(), deviceId);
             toast({ title: "Sukses", description: "Check-in berhasil dicatat." });
-            if (isMounted) {
-                const userString = localStorage.getItem('user_authenticated');
-                if (userString) {
-                    const userData = JSON.parse(userString);
-                    setStudent(userData);
-                    fetchData(userData.id);
-                }
+            const userString = localStorage.getItem('user_authenticated');
+            if (userString) {
+                const userData = JSON.parse(userString);
+                setStudent(userData);
+                fetchData(userData.id);
             }
         } catch (error: any) {
             toast({ title: "Error", description: error.message || "Gagal melakukan check-in.", variant: "destructive" });
@@ -363,7 +354,7 @@ export default function StudentDashboardClient() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  if (!isMounted || !student || !settings) {
+  if (!student || !settings) {
     return (
        <div className="w-full h-screen flex items-center justify-center">
          <Loader2 className="h-8 w-8 animate-spin text-primary" />

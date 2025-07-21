@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { getStudents, getCategories, getRatings, getUsers, getAttendance, getSettings, getPositions, getPointRecords } from '@/lib/data';
 import type { Student, Category, Rating, User, Attendance, AppSettings, Position, PointRecord } from '@/lib/types';
 import { Header } from '@/components/common/Header';
@@ -22,7 +21,11 @@ import { SystemInstructions } from './SystemInstructions';
 import { PositionManager } from './PositionManager';
 import { PointRecorder } from './PointRecorder';
 
-export default function DashboardClient() {
+type DashboardClientProps = {
+  onLogout: () => void;
+}
+
+export default function DashboardClient({ onLogout }: DashboardClientProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -32,38 +35,27 @@ export default function DashboardClient() {
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
   
-  const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-
     try {
       const userString = localStorage.getItem('user_authenticated');
       if (userString) {
         const user = JSON.parse(userString);
         if (user.role === 'teacher') {
-          setIsAuthenticated(true);
           setCurrentUser(user);
         } else {
-            router.replace('/student/dashboard');
+           onLogout();
         }
       } else {
-        router.replace('/');
+        onLogout();
       }
     } catch(e) {
-       setIsAuthenticated(false);
-       router.replace('/');
+       onLogout();
     }
-  }, [router, toast, isMounted]);
+  }, [onLogout]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -88,17 +80,17 @@ export default function DashboardClient() {
       setPointRecords(pointRecordsData);
     } catch (error) {
       console.error("Failed to fetch data", error);
-      toast({ title: "Error", description: "Gagal memuat data dari server.", variant: "destructive"});
+      toast({ title: "Error", description: "Gagal memuat data dari Local Storage.", variant: "destructive"});
     } finally {
       setLoading(false);
     }
   }, [toast]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (currentUser) {
       fetchData();
     }
-  }, [fetchData, isAuthenticated]);
+  }, [fetchData, currentUser]);
   
   const [isStudentManagerOpen, setStudentManagerOpen] = useState(false);
   const [isCategoryManagerOpen, setCategoryManagerOpen] = useState(false);
@@ -111,16 +103,8 @@ export default function DashboardClient() {
   const handleDataUpdate = async () => {
     await fetchData();
   };
-
-  if (!isMounted) {
-    return (
-        <div className="w-full h-screen flex items-center justify-center">
-            <p>Memuat...</p>
-        </div>
-    );
-  }
   
-  if (!isAuthenticated || !settings || !currentUser) {
+  if (!settings || !currentUser) {
     return (
         <div className="w-full h-screen flex items-center justify-center">
             <p>Mengarahkan...</p>
@@ -137,6 +121,7 @@ export default function DashboardClient() {
             onManagePositions={() => setPositionManagerOpen(true)}
             onManageUsers={() => setUserManagerOpen(true)}
             onManageSettings={() => setSettingsManagerOpen(true)}
+            onLogout={onLogout}
           />
         <div className="p-8">
           <Skeleton className="h-16 w-full mb-8" />
@@ -159,6 +144,7 @@ export default function DashboardClient() {
         onManagePositions={() => setPositionManagerOpen(true)}
         onManageUsers={() => setUserManagerOpen(true)}
         onManageSettings={() => setSettingsManagerOpen(true)}
+        onLogout={onLogout}
       />
 
       <main className="flex-1 p-4 md:p-8 container mx-auto">

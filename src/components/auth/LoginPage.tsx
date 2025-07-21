@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,8 +20,11 @@ const loginSchema = z.object({
   password: z.string().min(6, { message: "Password minimal 6 karakter." }),
 });
 
-export function LoginPage() {
-  const router = useRouter();
+type LoginPageProps = {
+  onLoginSuccess: () => void;
+}
+
+export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -61,7 +63,7 @@ export function LoginPage() {
           title: 'Login Berhasil',
           description: `Selamat datang kembali, ${user.name}!`,
         });
-        router.push('/dashboard');
+        onLoginSuccess();
         return;
       }
 
@@ -72,7 +74,7 @@ export function LoginPage() {
           title: 'Login Berhasil',
           description: `Selamat datang, ${student.name}!`,
         });
-        router.push('/student/dashboard');
+        onLoginSuccess();
         return;
       }
       

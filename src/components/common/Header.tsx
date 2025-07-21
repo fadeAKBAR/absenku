@@ -1,7 +1,6 @@
 
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { BookUser, GanttChartSquare, LogOut, Users, Settings, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSettings } from '@/lib/data';
@@ -13,10 +12,10 @@ type HeaderProps = {
   onManageUsers: () => void;
   onManageSettings: () => void;
   onManagePositions: () => void;
+  onLogout: () => void;
 };
 
-export function Header({ onManageStudents, onManageCategories, onManageUsers, onManageSettings, onManagePositions }: HeaderProps) {
-  const router = useRouter();
+export function Header({ onManageStudents, onManageCategories, onManageUsers, onManageSettings, onManagePositions, onLogout }: HeaderProps) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
@@ -29,7 +28,7 @@ export function Header({ onManageStudents, onManageCategories, onManageUsers, on
 
   const handleLogout = () => {
     localStorage.removeItem('user_authenticated');
-    router.push('/');
+    onLogout();
   };
 
   return (
