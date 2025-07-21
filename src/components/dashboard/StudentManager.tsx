@@ -57,7 +57,7 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
 
   const form = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
-    defaultValues: { name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "", positionId: "" },
+    defaultValues: { name: "", email: "", password: "", photoUrl: "", address: "", phone: "", parentPhone: "", positionId: NO_POSITION_VALUE },
   });
   
   useEffect(() => {
@@ -349,4 +349,3 @@ export function StudentManager({ isOpen, onOpenChange, students, onUpdate }: Stu
     </Dialog>
   );
 }
-

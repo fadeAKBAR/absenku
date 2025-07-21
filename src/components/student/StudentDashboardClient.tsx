@@ -283,8 +283,8 @@ export default function StudentDashboardClient() {
         await checkOutStudent(student.id, new Date());
         toast({ title: "Sukses", description: "Check-out berhasil dicatat. Sampai jumpa besok!" });
         fetchData(student.id);
-    } catch (error) {
-        toast({ title: "Error", description: "Gagal melakukan check-out.", variant: "destructive" });
+    } catch (error: any) {
+        toast({ title: "Error", description: error?.message || "Gagal melakukan check-out.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }

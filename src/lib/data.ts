@@ -23,7 +23,7 @@ let positions: Position[] = [];
 let pointRecords: PointRecord[] = [];
 
 let settings: AppSettings = {
-    schoolName: "SMKN 3 SOPPENG",
+    schoolName: "SMK Negeri 3 Soppeng",
     schoolLogoUrl: "https://www.smkn3soppeng.sch.id/media_library/images/355dfdca525613f8b5e873ec18c6a658.png",
     location: {
         latitude: -4.375254638902236,
@@ -143,11 +143,12 @@ export const addUser = async (userData: Omit<User, 'id' | 'createdAt' | 'role'>)
 
 export const updateUser = async (id: string, data: Partial<Omit<User, 'id'|'createdAt'| 'role'>>): Promise<User> => {
     await simulateDelay(200);
-    let userToUpdate = users.find(u => u.id === id);
-    if (!userToUpdate) {
+    const userIndex = users.findIndex(u => u.id === id);
+    if (userIndex === -1) {
         throw new Error("Pengguna tidak ditemukan");
     }
 
+    const userToUpdate = users[userIndex];
     const updatedData = { ...userToUpdate, ...data };
     
     // Only update password if a new, non-empty password is provided
@@ -158,11 +159,7 @@ export const updateUser = async (id: string, data: Partial<Omit<User, 'id'|'crea
         updatedData.password = userToUpdate.password;
     }
 
-    const userIndex = users.findIndex(u => u.id === id);
-    if(userIndex > -1) {
-        users[userIndex] = updatedData;
-    }
-
+    users[userIndex] = updatedData;
     saveToLocalStorage('app_users', users);
     return updatedData;
 }
@@ -198,37 +195,31 @@ export const addStudent = async (data: Omit<Student, 'id' | 'createdAt'>): Promi
 
 export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt'>>): Promise<Student> => {
     await simulateDelay(200);
-    let studentToUpdate = students.find(s => s.id === id);
-    if (!studentToUpdate) {
+    const studentIndex = students.findIndex(s => s.id === id);
+    if (studentIndex === -1) {
         throw new Error("Siswa tidak ditemukan");
     }
     
-    // Create a new object for the updated student data to avoid direct mutation issues
+    let studentToUpdate = students[studentIndex];
     const updatedData = { ...studentToUpdate, ...data };
 
     // Password change logic
     if (data.password && data.password.trim() !== "") {
-        // If changing password, old password must be provided and must match
-        if (!data.oldPassword) {
-            throw new Error("Password lama harus diisi untuk mengubah password.");
-        }
-        if (data.oldPassword !== studentToUpdate.password) {
-            throw new Error("Password lama yang Anda masukkan salah.");
+        // If changing password, old password must be provided and must match for students
+        if (data.oldPassword) {
+            if (data.oldPassword !== studentToUpdate.password) {
+                throw new Error("Password lama yang Anda masukkan salah.");
+            }
         }
         updatedData.password = data.password;
     } else {
-        // Keep the old password if the new one is not provided
+        // Keep the old password if the new one is not provided or empty
         updatedData.password = studentToUpdate.password;
     }
-    // Remove temporary fields from the final object
-    delete updatedData.oldPassword;
 
-    // Find index and replace
-    const studentIndex = students.findIndex(s => s.id === id);
-    if (studentIndex > -1) {
-        students[studentIndex] = updatedData;
-    }
+    delete updatedData.oldPassword; // Remove temporary field
 
+    students[studentIndex] = updatedData;
     saveToLocalStorage('app_students', students);
     return updatedData;
 }

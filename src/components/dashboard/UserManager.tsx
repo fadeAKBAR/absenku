@@ -81,8 +81,8 @@ export function UserManager({ isOpen, onOpenChange, users, onUpdate }: UserManag
       }
       handleCancelEdit();
       onUpdate();
-    } catch (error) {
-      toast({ title: "Error", description: "Gagal menyimpan data pengguna.", variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: "Error", description: error?.message || "Gagal menyimpan data pengguna.", variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
