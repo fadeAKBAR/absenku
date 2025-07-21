@@ -61,14 +61,14 @@ Perintah ini akan membuat atau memperbarui folder bernama `docs` di proyek Anda.
 
 ### Langkah 3: Unggah ke GitHub
 
-Setelah menjalankan `npm run build`, unggah semua perubahan Anda ke GitHub:
+Setelah menjalankan `npm run build`, unggah semua perubahan Anda **termasuk folder `docs` yang baru dibuat** ke GitHub:
 
 ```bash
 git add .
 git commit -m "Deskripsi perubahan Anda"
 git push origin main
 ```
-**Penting:** Folder `docs` sengaja tidak diunggah ke GitHub berkat file `.gitignore`. Proses build hanya perlu dilakukan di komputer lokal Anda sebelum push.
+**Penting:** Folder `docs` sekarang akan ikut terunggah ke repositori GitHub Anda. Ini adalah langkah yang disengaja dan diperlukan agar GitHub Pages dapat berfungsi.
 
 ### Langkah 4: Konfigurasi GitHub Pages (Hanya Dilakukan Sekali)
 
@@ -80,4 +80,3 @@ git push origin main
 6.  Klik **Save**.
 
 Tunggu beberapa menit hingga proses deployment selesai. Aplikasi Anda akan aktif dan dapat diakses di URL seperti `https://<NAMA_PENGGUNA_ANDA>.github.io/<NAMA_REPOSITORI_ANDA>/`. Setiap kali Anda melakukan `push` setelah ini, situs akan diperbarui secara otomatis.
-
