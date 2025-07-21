@@ -76,7 +76,8 @@ git push origin main
 2.  Klik tab "**Settings**".
 3.  Di menu sebelah kiri, klik "**Pages**".
 4.  Di bawah bagian "Build and deployment", ubah **Source** menjadi **"Deploy from a branch"**.
-5.  Di bawahnya, pada bagian **Branch**, pilih branch `main` dan folder `/(root)`.
+5.  Di bawahnya, pada bagian **Branch**, pilih branch `main` dan folder `/docs`. **Ini adalah langkah yang paling penting.**
 6.  Klik **Save**.
 
 Tunggu beberapa menit hingga proses deployment selesai. Aplikasi Anda akan aktif dan dapat diakses di URL seperti `https://<NAMA_PENGGUNA_ANDA>.github.io/<NAMA_REPOSITORI_ANDA>/`. Setiap kali Anda melakukan `push` setelah ini, situs akan diperbarui secara otomatis.
+
