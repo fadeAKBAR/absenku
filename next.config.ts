@@ -41,10 +41,6 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  devIndicators: {
-    // This allows previews from the Studio to work.
-    allowedDevOrigins: ["*.cloudworkstations.dev"],
-  },
 };
 
 export default nextConfig;
