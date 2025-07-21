@@ -22,40 +22,61 @@ GradeWise adalah aplikasi web modern yang dibangun dengan Next.js untuk membantu
 
 ---
 
-## Memulai Proyek Secara Lokal
+## 1. Menjalankan Proyek Secara Lokal
 
 Ikuti langkah-langkah di bawah ini untuk menjalankan aplikasi di komputer lokal Anda. Proyek ini **tidak memerlukan kunci API** atau konfigurasi eksternal lainnya.
 
-### 1. Prasyarat
+### Prasyarat
 
 Pastikan Anda telah menginstal perangkat lunak berikut di sistem Anda:
 - [Node.js](https://nodejs.org/) (versi 18 atau lebih baru direkomendasikan)
-- npm (terinstal otomatis bersama Node.js)
-- Git
+- [Git](https://git-scm.com/downloads)
 
-### 2. Kloning Repositori
+### Langkah-langkah Instalasi
 
-Kloning repositori ini ke mesin lokal Anda menggunakan git:
+1.  **Kloning Repositori**
+    Buka terminal Anda dan jalankan perintah berikut (ganti dengan URL repositori Anda):
+    ```bash
+    git clone https://[URL_REPOSITORI_GITHUB_ANDA].git
+    cd [NAMA_FOLDER_PROYEK]
+    ```
 
-```bash
-git clone https://[URL_REPOSITORI_GITHUB_ANDA].git
-cd [NAMA_FOLDER_PROYEK]
-```
+2.  **Instalasi Dependensi**
+    Install semua library yang dibutuhkan oleh proyek:
+    ```bash
+    npm install
+    ```
 
-### 3. Instalasi Dependensi
+3.  **Menjalankan Aplikasi**
+    Setelah semua langkah di atas selesai, Anda dapat menjalankan server pengembangan lokal:
+    ```bash
+    npm run dev
+    ```
+    Aplikasi akan berjalan dan dapat diakses di `http://localhost:9002`.
 
-Install semua library dan paket yang dibutuhkan oleh proyek dengan menjalankan perintah berikut di terminal dari dalam direktori proyek:
+---
 
-```bash
-npm install
-```
+## 2. Mempublikasikan Proyek (Hosting Gratis)
 
-### 4. Menjalankan Aplikasi
+Anda dapat mempublikasikan aplikasi ini secara gratis menggunakan Vercel. Proses ini sangat mudah dan tidak memerlukan kartu kredit.
 
-Setelah semua langkah di atas selesai, Anda dapat menjalankan server pengembangan lokal:
+### Prasyarat
+- Akun [GitHub](https://github.com) gratis.
+- Akun [Vercel](https://vercel.com) gratis (Anda bisa mendaftar menggunakan akun GitHub Anda).
 
-```bash
-npm run dev
-```
+### Langkah-langkah Deployment ke Vercel
 
-Aplikasi akan berjalan dan dapat diakses di `http://localhost:9002` (atau port lain jika 9002 sudah digunakan). Semuanya sudah siap! Tidak ada langkah konfigurasi tambahan yang diperlukan.
+1.  **Unggah Proyek ke GitHub**
+    Ikuti langkah-langkah di atas untuk menjalankan proyek secara lokal, lalu unggah kode Anda ke repositori GitHub baru.
+
+2.  **Impor Proyek ke Vercel**
+    - Login ke dasbor Vercel Anda.
+    - Klik "**Add New...**" lalu pilih "**Project**".
+    - Vercel akan menampilkan daftar repositori GitHub Anda. Klik "**Import**" pada repositori GradeWise yang telah Anda unggah.
+
+3.  **Konfigurasi dan Deploy**
+    - Vercel akan otomatis mendeteksi bahwa ini adalah proyek Next.js dan menampilkan konfigurasi yang benar.
+    - Anda **tidak perlu mengubah pengaturan apa pun**.
+    - Cukup klik tombol "**Deploy**".
+
+Tunggu beberapa saat hingga proses build selesai. Setelah itu, Vercel akan memberikan Anda URL publik (seperti `nama-proyek-anda.vercel.app`) di mana aplikasi Anda sudah aktif dan bisa diakses oleh siapa saja.
