@@ -21,6 +21,7 @@ Aplikasi ini berjalan sepenuhnya di sisi klien (browser) dan menggunakan **Local
 - **Manajemen Form:** React Hook Form, Zod
 - **Visualisasi Data:** Recharts
 - **Penyimpanan Data:** Local Storage (Sisi Klien)
+- **Deployment:** GitHub Actions & GitHub Pages
 
 ---
 
@@ -67,11 +68,14 @@ Proyek ini sudah dikonfigurasi untuk dapat di-hosting secara gratis menggunakan 
 1.  **Unggah Proyek ke GitHub**
     Ikuti langkah-langkah di atas untuk menjalankan proyek secara lokal, lalu unggah kode Anda ke repositori GitHub baru.
 
-2.  **Aktifkan GitHub Pages (Hanya perlu dilakukan sekali)**
+2.  **Aktifkan GitHub Pages (PENTING! Hanya dilakukan sekali)**
     - Buka repositori Anda di GitHub.
     - Klik tab "**Settings**".
     - Di menu sebelah kiri, klik "**Pages**".
-    - Di bawah "Build and deployment", pada bagian "Source", pilih "**GitHub Actions**".
+    - Di bawah bagian "Build and deployment", temukan opsi "**Source**".
+    - **Ubah pilihan dari "Deploy from a branch" menjadi "GitHub Actions"**.
+    
+    Langkah ini krusial agar GitHub Pages menampilkan aplikasi yang sudah di-build, bukan hanya file `README.md`.
 
 3.  **Lakukan Push ke Branch `main`**
     Setiap kali Anda melakukan `git push` ke branch `main`, GitHub Actions akan secara otomatis membangun aplikasi Anda dan men-deploy-nya. Anda dapat melihat progresnya di tab "**Actions**" pada repositori Anda.
