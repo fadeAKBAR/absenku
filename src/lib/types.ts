@@ -1,9 +1,11 @@
 
+
 export interface Student {
   id: string;
   name: string;
   email: string;
   password?: string;
+  oldPassword?: string; // Temporary field for password change
   photoUrl?: string;
   address?: string;
   phone?: string;

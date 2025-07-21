@@ -188,7 +188,7 @@ export const addStudent = async (data: Omit<Student, 'id' | 'createdAt'>): Promi
   return newStudent;
 };
 
-export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt'>>): Promise<Student> => {
+export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id' | 'createdAt' | 'password'>> & { password?: string, oldPassword?: string }): Promise<Student> => {
     await simulateDelay(200);
     let studentToUpdate = students.find(s => s.id === id);
     if (!studentToUpdate) {
@@ -198,13 +198,22 @@ export const updateStudent = async (id: string, data: Partial<Omit<Student, 'id'
     // Create a new object for the updated student data to avoid direct mutation issues
     const updatedData = { ...studentToUpdate, ...data };
 
-    // If password field is present but empty, it means we don't want to update it.
+    // Password change logic
     if (data.password && data.password.trim() !== "") {
+        // If changing password, old password must be provided and must match
+        if (!data.oldPassword) {
+            throw new Error("Password lama harus diisi untuk mengubah password.");
+        }
+        if (data.oldPassword !== studentToUpdate.password) {
+            throw new Error("Password lama yang Anda masukkan salah.");
+        }
         updatedData.password = data.password;
     } else {
-        // Keep the old password if the new one is empty
+        // Keep the old password if the new one is not provided
         updatedData.password = studentToUpdate.password;
     }
+    // Remove temporary fields from the final object
+    delete updatedData.oldPassword;
 
     // Find index and replace
     const studentIndex = students.findIndex(s => s.id === id);
