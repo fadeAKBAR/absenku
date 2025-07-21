@@ -29,8 +29,10 @@ export function LoginPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     async function fetchData() {
       const [storedUsers, storedStudents, appSettings] = await Promise.all([getUsers(), getStudents(), getSettings()]);
       setUsers(storedUsers);
@@ -83,6 +85,10 @@ export function LoginPage() {
 
     }, 1000);
   };
+  
+  if (!isMounted) {
+    return null; // or a loading spinner
+  }
 
   return (
     <Card className="w-full max-w-sm">

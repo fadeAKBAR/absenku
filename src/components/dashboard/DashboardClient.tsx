@@ -35,11 +35,18 @@ export default function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     try {
       const userString = localStorage.getItem('user_authenticated');
       if (userString) {
@@ -62,7 +69,7 @@ export default function DashboardClient() {
        setIsAuthenticated(false);
        router.replace('/');
     }
-  }, [router, toast]);
+  }, [router, toast, isMounted]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -111,6 +118,14 @@ export default function DashboardClient() {
     await fetchData();
   };
 
+  if (!isMounted) {
+    return (
+        <div className="w-full h-screen flex items-center justify-center">
+            <p>Memuat...</p>
+        </div>
+    );
+  }
+  
   if (!isAuthenticated || !settings || !currentUser) {
     return (
         <div className="w-full h-screen flex items-center justify-center">

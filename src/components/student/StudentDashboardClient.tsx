@@ -56,6 +56,7 @@ export default function StudentDashboardClient() {
   const [canCheckOut, setCanCheckOut] = useState(false);
   const [isReportAbsenceOpen, setReportAbsenceOpen] = useState(false);
   const [isEditProfileOpen, setEditProfileOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -68,7 +69,6 @@ export default function StudentDashboardClient() {
     const checkoutTime = set(new Date(), { hours: h, minutes: m, seconds: 0, milliseconds: 0 });
     setCanCheckOut(now >= checkoutTime);
   }, [settings]);
-
 
   const fetchData = useCallback(async (studentId: string) => {
     try {
@@ -91,8 +91,14 @@ export default function StudentDashboardClient() {
     }
   }, [toast, todayString]);
 
-  const loadStudentFromStorage = useCallback(() => {
-     try {
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    try {
       const userString = localStorage.getItem('user_authenticated');
       if (userString) {
         const userData = JSON.parse(userString);
@@ -108,11 +114,7 @@ export default function StudentDashboardClient() {
     } catch (e) {
       router.replace('/');
     }
-  }, [router, fetchData]);
-
-  useEffect(() => {
-    loadStudentFromStorage();
-  }, [loadStudentFromStorage]);
+  }, [isMounted, router, fetchData]);
   
   useEffect(() => {
     const interval = setInterval(checkCanCheckOut, 1000 * 30); // Check every 30 seconds
@@ -169,6 +171,7 @@ export default function StudentDashboardClient() {
   // --- END OF HOOKS ---
 
   const getGreeting = () => {
+      if (!isMounted) return 'Selamat Datang';
       const hour = new Date().getHours();
       if (hour < 12) return 'Selamat Pagi';
       if (hour < 15) return 'Selamat Siang';
@@ -249,8 +252,14 @@ export default function StudentDashboardClient() {
         try {
             await checkInStudent(student.id, new Date(), deviceId);
             toast({ title: "Sukses", description: "Check-in berhasil dicatat." });
-            // Refetch student data to get the updated deviceId
-            loadStudentFromStorage();
+            if (isMounted) {
+                const userString = localStorage.getItem('user_authenticated');
+                if (userString) {
+                    const userData = JSON.parse(userString);
+                    setStudent(userData);
+                    fetchData(userData.id);
+                }
+            }
         } catch (error: any) {
             toast({ title: "Error", description: error.message || "Gagal melakukan check-in.", variant: "destructive" });
         } finally {
@@ -354,7 +363,7 @@ export default function StudentDashboardClient() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  if (!student || !settings) {
+  if (!isMounted || !student || !settings) {
     return (
        <div className="w-full h-screen flex items-center justify-center">
          <Loader2 className="h-8 w-8 animate-spin text-primary" />
